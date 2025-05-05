@@ -35,7 +35,7 @@ const DashboardPage = () => {
         // Fetch nearby parking
         const { data: parkingData, error: parkingError } = await supabase
           .from('parking_locations')
-          .select('id, name, address, hourly_price, total_spots')
+          .select('id, name, address, hourly_price, total_spots, image_url')
           .limit(2);
           
         if (parkingError) {
@@ -54,7 +54,8 @@ const DashboardPage = () => {
                 ...parking,
                 price: Number(parking.hourly_price),
                 availableSpots: count || 0,
-                totalSpots: parking.total_spots
+                totalSpots: parking.total_spots,
+                imageUrl: parking.image_url
               };
             })
           );
@@ -159,7 +160,10 @@ const DashboardPage = () => {
             <p className="text-center py-4 text-muted-foreground">Loading...</p>
           ) : nearbyParking.length > 0 ? (
             nearbyParking.map((parking) => (
-              <ParkingLotCard key={parking.id} {...parking} />
+              <ParkingLotCard 
+                key={parking.id} 
+                {...parking} 
+              />
             ))
           ) : (
             <p className="text-center py-4 text-muted-foreground">No parking locations found</p>
