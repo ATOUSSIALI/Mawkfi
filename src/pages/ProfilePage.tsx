@@ -1,49 +1,156 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageContainer from '@/components/ui-components/PageContainer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { User, LogOut, CreditCard, Settings } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+
+interface UserProfile {
+  fullName: string;
+  email: string;
+  phone: string;
+}
 
 const ProfilePage = () => {
   const { toast } = useToast();
-  
-  // Mock user data - would normally come from user context/state
-  const [user, setUser] = useState({
-    fullName: 'Mohamed Allaoua',
-    email: 'mohamed.allaoua@example.com',
-    phone: '+213 555 123 456',
+  const [user, setUser] = useState<UserProfile>({
+    fullName: '',
+    email: '',
+    phone: '',
   });
-  
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({ ...user });
+  const [formData, setFormData] = useState<UserProfile>({ ...user });
+  const [isLoading, setIsLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      setIsLoading(true);
+      try {
+        // Get authenticated user
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        
+        if (!authUser) {
+          console.error('No authenticated user found');
+          return;
+        }
+        
+        // Get user profile data
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('full_name, phone')
+          .eq('id', authUser.id)
+          .single();
+          
+        if (profileError) {
+          console.error('Error fetching profile:', profileError);
+        }
+        
+        // Set user data
+        setUser({
+          fullName: profileData?.full_name || '',
+          email: authUser.email || '',
+          phone: profileData?.phone || '',
+        });
+        
+        setFormData({
+          fullName: profileData?.full_name || '',
+          email: authUser.email || '',
+          phone: profileData?.phone || '',
+        });
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchUserProfile();
+  }, []);
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
   
-  const handleSaveProfile = () => {
-    setUser(formData);
-    setIsEditing(false);
-    
-    toast({
-      title: "Profile Updated",
-      description: "Your profile information has been updated successfully.",
-    });
+  const handleSaveProfile = async () => {
+    try {
+      // Get authenticated user
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      
+      if (!authUser) {
+        toast({
+          title: "Error",
+          description: "Not authenticated",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Update profile in Supabase
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: formData.fullName,
+          phone: formData.phone,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', authUser.id);
+        
+      if (error) {
+        throw error;
+      }
+      
+      // Update local state
+      setUser(formData);
+      setIsEditing(false);
+      
+      toast({
+        title: "Profile Updated",
+        description: "Your profile information has been updated successfully.",
+      });
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: "Update Failed",
+        description: error.message || "There was an error updating your profile.",
+        variant: "destructive"
+      });
+    }
   };
   
-  const handleLogout = () => {
-    toast({
-      title: "Logged Out",
-      description: "You have been successfully logged out.",
-    });
-    
-    // Navigate to welcome page
-    window.location.href = '/';
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      
+      toast({
+        title: "Logged Out",
+        description: "You have been successfully logged out.",
+      });
+      
+      // Navigate to welcome page
+      window.location.href = '/';
+    } catch (error: any) {
+      console.error('Error signing out:', error);
+      toast({
+        title: "Error",
+        description: error.message || "There was an error logging out.",
+        variant: "destructive"
+      });
+    }
   };
+  
+  if (isLoading) {
+    return (
+      <PageContainer>
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">Loading profile...</p>
+        </div>
+      </PageContainer>
+    );
+  }
   
   return (
     <PageContainer className="pb-20">
@@ -52,10 +159,10 @@ const ProfilePage = () => {
       <div className="flex flex-col items-center mb-8">
         <Avatar className="w-24 h-24 mb-4">
           <AvatarFallback className="bg-primary text-white text-xl">
-            {user.fullName.split(' ').map(name => name[0]).join('')}
+            {user.fullName ? user.fullName.split(' ').map(name => name[0]).join('') : '?'}
           </AvatarFallback>
         </Avatar>
-        <h2 className="text-xl font-semibold">{user.fullName}</h2>
+        <h2 className="text-xl font-semibold">{user.fullName || 'User'}</h2>
         <p className="text-muted-foreground">{user.email}</p>
       </div>
       
@@ -85,7 +192,9 @@ const ProfilePage = () => {
               value={formData.email}
               onChange={handleInputChange}
               className="input-field"
+              disabled
             />
+            <p className="text-xs text-muted-foreground">Email cannot be changed</p>
           </div>
           
           <div className="space-y-2">
@@ -131,7 +240,7 @@ const ProfilePage = () => {
             <div className="space-y-3">
               <div>
                 <p className="text-sm text-muted-foreground">Full Name</p>
-                <p className="font-medium">{user.fullName}</p>
+                <p className="font-medium">{user.fullName || 'Not set'}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Email Address</p>
@@ -139,7 +248,7 @@ const ProfilePage = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Phone Number</p>
-                <p className="font-medium">{user.phone}</p>
+                <p className="font-medium">{user.phone || 'Not set'}</p>
               </div>
             </div>
           </div>

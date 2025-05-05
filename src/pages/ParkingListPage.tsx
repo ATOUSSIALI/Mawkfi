@@ -50,9 +50,7 @@ const ParkingListPage = () => {
               
             return {
               ...parking,
-              price: Number(parking.hourly_price),
-              availableSpots: count || 0,
-              totalSpots: parking.total_spots
+              availableSpots: count || 0
             };
           })
         );
@@ -105,9 +103,9 @@ const ParkingListPage = () => {
               id={parking.id} 
               name={parking.name} 
               address={parking.address} 
-              price={parking.price} 
+              price={parking.hourly_price} 
               availableSpots={parking.availableSpots} 
-              totalSpots={parking.totalSpots} 
+              totalSpots={parking.total_spots} 
               imageUrl={parking.image_url || undefined}
             />
           ))

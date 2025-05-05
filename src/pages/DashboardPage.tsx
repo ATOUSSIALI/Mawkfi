@@ -20,10 +20,19 @@ const DashboardPage = () => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
+        // Get current user
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          console.error('No authenticated user found');
+          return;
+        }
+        
         // Fetch wallet balance
         const { data: walletData, error: walletError } = await supabase
           .from('wallets')
           .select('balance')
+          .eq('id', user.id)
           .single();
           
         if (walletError) {
@@ -78,6 +87,7 @@ const DashboardPage = () => {
             parking_slots(slot_label),
             parking_locations(name, address)
           `)
+          .eq('user_id', user.id)
           .eq('is_active', true)
           .order('start_time', { ascending: false })
           .limit(1)

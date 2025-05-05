@@ -26,7 +26,7 @@ const ParkingLotCard = ({
   imageUrl,
   className
 }: ParkingLotCardProps) => {
-  const availability = (availableSpots / totalSpots) * 100;
+  const availability = totalSpots > 0 ? (availableSpots / totalSpots) * 100 : 0;
   
   let availabilityColor = 'bg-red-500';
   if (availability > 20) availabilityColor = 'bg-orange-500';

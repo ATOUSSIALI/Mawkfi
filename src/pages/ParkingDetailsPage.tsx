@@ -2,10 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PageContainer from '@/components/ui-components/PageContainer';
-import ParkingSpotGrid from '@/components/parking/ParkingSpotGrid';
+import ParkingSpotGrid, { SpotStatus } from '@/components/parking/ParkingSpotGrid';
 import { Button } from '@/components/ui/button';
 import { MapPin, CreditCard, Clock } from 'lucide-react';
-import { SpotStatus } from '@/components/parking/ParkingSpotGrid';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -78,7 +77,7 @@ const ParkingDetailsPage = () => {
         });
         
         // Set up parking spots data
-        const formattedSpots = slotsData.map(slot => ({
+        const formattedSpots: ParkingSpot[] = slotsData.map(slot => ({
           id: slot.id,
           label: slot.slot_label,
           status: slot.is_occupied ? 'occupied' : 'available'
@@ -149,7 +148,7 @@ const ParkingDetailsPage = () => {
   
   return (
     <PageContainer className="pb-20">
-      {parkingLot.image_url && (
+      {parkingLot?.image_url && (
         <div className="h-48 -mx-4 mb-4 overflow-hidden rounded-b-lg">
           <img 
             src={parkingLot.image_url} 
@@ -159,33 +158,35 @@ const ParkingDetailsPage = () => {
         </div>
       )}
       
-      <h1 className="text-xl font-bold mb-2">{parkingLot.name}</h1>
+      <h1 className="text-xl font-bold mb-2">{parkingLot?.name}</h1>
       
       <div className="flex items-center text-muted-foreground mb-4">
         <MapPin size={16} className="mr-1" />
-        <p className="text-sm">{parkingLot.address}</p>
+        <p className="text-sm">{parkingLot?.address}</p>
       </div>
       
-      <p className="text-sm mb-6">{parkingLot.description}</p>
+      <p className="text-sm mb-6">{parkingLot?.description}</p>
       
       <div className="bg-secondary rounded-lg p-4 flex justify-between items-center mb-6">
         <div>
           <p className="text-sm text-muted-foreground">Price per hour</p>
-          <p className="text-xl font-bold text-primary">{parkingLot.hourly_price} DZD</p>
+          <p className="text-xl font-bold text-primary">{parkingLot?.hourly_price} DZD</p>
         </div>
         <div>
           <p className="text-sm text-muted-foreground">Available</p>
-          <p className="text-xl font-bold">{parkingLot.availableSpots}/{parkingLot.totalSpots}</p>
+          <p className="text-xl font-bold">{parkingLot?.availableSpots}/{parkingLot?.totalSpots}</p>
         </div>
       </div>
       
       <h2 className="font-semibold mb-4">Select a Parking Spot</h2>
       
-      <ParkingSpotGrid 
-        spots={spots} 
-        onSpotSelect={handleSpotSelect}
-        selectedSpotId={selectedSpotId || undefined}
-      />
+      {!isLoading && parkingLot && (
+        <ParkingSpotGrid 
+          spots={spots} 
+          onSpotSelect={handleSpotSelect}
+          selectedSpotId={selectedSpotId || undefined}
+        />
+      )}
       
       {selectedSpotId && (
         <div className="mt-6 space-y-4">
@@ -219,7 +220,7 @@ const ParkingDetailsPage = () => {
             </div>
             <div className="flex justify-between">
               <p>Price</p>
-              <p className="font-bold text-primary">{parkingLot.hourly_price * duration} DZD</p>
+              <p className="font-bold text-primary">{parkingLot?.hourly_price * duration} DZD</p>
             </div>
           </div>
           
