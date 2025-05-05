@@ -9,7 +9,217 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      bookings: {
+        Row: {
+          booking_code: string
+          created_at: string
+          duration_hours: number
+          end_time: string
+          id: string
+          is_active: boolean
+          parking_location_id: string
+          parking_slot_id: string
+          start_time: string
+          total_price: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          booking_code: string
+          created_at?: string
+          duration_hours: number
+          end_time: string
+          id?: string
+          is_active?: boolean
+          parking_location_id: string
+          parking_slot_id: string
+          start_time: string
+          total_price: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          booking_code?: string
+          created_at?: string
+          duration_hours?: number
+          end_time?: string
+          id?: string
+          is_active?: boolean
+          parking_location_id?: string
+          parking_slot_id?: string
+          start_time?: string
+          total_price?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_parking_location_id_fkey"
+            columns: ["parking_location_id"]
+            isOneToOne: false
+            referencedRelation: "parking_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_parking_slot_id_fkey"
+            columns: ["parking_slot_id"]
+            isOneToOne: false
+            referencedRelation: "parking_slots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parking_locations: {
+        Row: {
+          address: string
+          created_at: string
+          hourly_price: number
+          id: string
+          image_url: string | null
+          name: string
+          total_spots: number
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          hourly_price: number
+          id?: string
+          image_url?: string | null
+          name: string
+          total_spots: number
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          hourly_price?: number
+          id?: string
+          image_url?: string | null
+          name?: string
+          total_spots?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      parking_slots: {
+        Row: {
+          created_at: string
+          id: string
+          is_occupied: boolean
+          parking_location_id: string
+          slot_label: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_occupied?: boolean
+          parking_location_id: string
+          slot_label: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_occupied?: boolean
+          parking_location_id?: string
+          slot_label?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parking_slots_parking_location_id_fkey"
+            columns: ["parking_location_id"]
+            isOneToOne: false
+            referencedRelation: "parking_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string | null
+          id: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string | null
+          id: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          amount: number
+          booking_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          booking_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          booking_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallets: {
+        Row: {
+          balance: number
+          created_at: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

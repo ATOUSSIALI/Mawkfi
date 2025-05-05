@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import PageContainer from '@/components/ui-components/PageContainer';
 import ParkingLotCard from '@/components/parking/ParkingLotCard';
 import WalletCard from '@/components/payment/WalletCard';
@@ -7,42 +7,105 @@ import { useToast } from '@/hooks/use-toast';
 import { BookingDetails } from '@/components/bookings/BookingCard';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
 
 const DashboardPage = () => {
   const { toast } = useToast();
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [nearbyParking, setNearbyParking] = useState<any[]>([]);
+  const [activeBooking, setActiveBooking] = useState<BookingDetails | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
-  // Mock data - normally from API/Supabase
-  const walletBalance = 2500;
-  const nearbyParking = [
-    {
-      id: '1',
-      name: 'Central Parking Algiers',
-      address: 'Rue Didouche Mourad, Algiers',
-      price: 150,
-      availableSpots: 12,
-      totalSpots: 20,
-    },
-    {
-      id: '2',
-      name: 'Medina Parking',
-      address: 'Boulevard Front de Mer, Algiers',
-      price: 120,
-      availableSpots: 5,
-      totalSpots: 30,
-    },
-  ];
-  
-  const activeBooking: BookingDetails | null = {
-    id: '101',
-    parkingName: 'Central Parking Algiers',
-    spotLabel: 'A12',
-    address: 'Rue Didouche Mourad, Algiers',
-    startTime: '2025-05-05 14:30',
-    endTime: '2025-05-05 16:30',
-    duration: 2,
-    price: 300,
-    status: 'active',
-  };
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        // Fetch wallet balance
+        const { data: walletData, error: walletError } = await supabase
+          .from('wallets')
+          .select('balance')
+          .single();
+          
+        if (walletError) {
+          console.error('Error fetching wallet:', walletError);
+        } else if (walletData) {
+          setWalletBalance(Number(walletData.balance));
+        }
+        
+        // Fetch nearby parking
+        const { data: parkingData, error: parkingError } = await supabase
+          .from('parking_locations')
+          .select('id, name, address, hourly_price, total_spots')
+          .limit(2);
+          
+        if (parkingError) {
+          console.error('Error fetching parking:', parkingError);
+        } else if (parkingData) {
+          // Get available spots count for each parking location
+          const enhancedParkingData = await Promise.all(
+            parkingData.map(async (parking) => {
+              const { count, error: spotsError } = await supabase
+                .from('parking_slots')
+                .select('*', { count: 'exact', head: true })
+                .eq('parking_location_id', parking.id)
+                .eq('is_occupied', false);
+                
+              return {
+                ...parking,
+                price: Number(parking.hourly_price),
+                availableSpots: count || 0,
+                totalSpots: parking.total_spots
+              };
+            })
+          );
+          
+          setNearbyParking(enhancedParkingData);
+        }
+        
+        // Fetch active booking
+        const { data: bookingData, error: bookingError } = await supabase
+          .from('bookings')
+          .select(`
+            id,
+            parking_location_id,
+            parking_slot_id,
+            start_time,
+            end_time,
+            duration_hours,
+            total_price,
+            booking_code,
+            parking_slots(slot_label),
+            parking_locations(name, address)
+          `)
+          .eq('is_active', true)
+          .order('start_time', { ascending: false })
+          .limit(1)
+          .single();
+          
+        if (bookingError && bookingError.code !== 'PGRST116') {
+          console.error('Error fetching booking:', bookingError);
+        } else if (bookingData) {
+          setActiveBooking({
+            id: bookingData.id,
+            parkingName: bookingData.parking_locations.name,
+            spotLabel: bookingData.parking_slots.slot_label,
+            address: bookingData.parking_locations.address,
+            startTime: bookingData.start_time,
+            endTime: bookingData.end_time,
+            duration: bookingData.duration_hours,
+            price: Number(bookingData.total_price),
+            status: 'active',
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, []);
   
   const handleAddFunds = () => {
     toast({
@@ -92,9 +155,15 @@ const DashboardPage = () => {
         </div>
         
         <div className="space-y-4">
-          {nearbyParking.map((parking) => (
-            <ParkingLotCard key={parking.id} {...parking} />
-          ))}
+          {isLoading ? (
+            <p className="text-center py-4 text-muted-foreground">Loading...</p>
+          ) : nearbyParking.length > 0 ? (
+            nearbyParking.map((parking) => (
+              <ParkingLotCard key={parking.id} {...parking} />
+            ))
+          ) : (
+            <p className="text-center py-4 text-muted-foreground">No parking locations found</p>
+          )}
         </div>
       </div>
     </PageContainer>

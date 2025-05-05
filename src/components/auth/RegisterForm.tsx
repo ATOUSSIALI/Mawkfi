@@ -2,8 +2,9 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const RegisterForm = () => {
   const [fullName, setFullName] = useState('');
@@ -12,6 +13,7 @@ const RegisterForm = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,23 +29,34 @@ const RegisterForm = () => {
     
     setIsLoading(true);
     
-    // Normally we would use Supabase here, but for now we'll just mock it
     try {
-      // Mock successful registration
-      setTimeout(() => {
-        toast({
-          title: "Registration Successful",
-          description: "Welcome to ParkDZ!",
-        });
-        setIsLoading(false);
-        window.location.href = '/dashboard';
-      }, 1500);
-    } catch (error) {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName
+          }
+        }
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      toast({
+        title: "Registration Successful",
+        description: "Welcome to ParkDZ!",
+      });
+      
+      navigate('/dashboard');
+    } catch (error: any) {
       toast({
         title: "Registration Failed",
-        description: "Please try again later.",
+        description: error.message || "Please try again later.",
         variant: "destructive"
       });
+    } finally {
       setIsLoading(false);
     }
   };
