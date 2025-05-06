@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PageContainer from '@/components/ui-components/PageContainer';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,8 @@ import ParkingSpotSelection from '@/components/parking/ParkingSpotSelection';
 import DurationSelector from '@/components/parking/DurationSelector';
 import PaymentSummary from '@/components/parking/PaymentSummary';
 import { useQuery } from '@tanstack/react-query';
+import { useParkingBooking } from '@/hooks/use-parking-booking';
+import { checkAndExpireOverdueBookings } from '@/utils/bookingScheduler';
 
 interface ParkingLocation {
   id: string;
@@ -34,9 +36,15 @@ const ParkingDetailsPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { bookSpot, isProcessing } = useParkingBooking();
   
   const [selectedSpotId, setSelectedSpotId] = useState<string | null>(null);
   const [duration, setDuration] = useState(1); // Default 1 hour
+
+  // Check and expire overdue bookings when page loads
+  useEffect(() => {
+    checkAndExpireOverdueBookings();
+  }, []);
 
   const { data: parkingLot, isLoading: isLoadingParking } = useQuery({
     queryKey: ['parkingLocation', id],
@@ -88,11 +96,23 @@ const ParkingDetailsPage = () => {
     setSelectedSpotId(spotId === selectedSpotId ? null : spotId);
   };
   
-  const handleProceedToPayment = () => {
+  const handleProceedToPayment = async () => {
     if (!selectedSpotId || !parkingLot) return;
     
     const selectedSpot = spots.find(spot => spot.id === selectedSpotId);
-    
+    if (!selectedSpot) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to book a parking spot.",
+        variant: "destructive"
+      });
+      navigate('/login');
+      return;
+    }
+
     navigate('/payment', { 
       state: { 
         parkingLotId: parkingLot.id,

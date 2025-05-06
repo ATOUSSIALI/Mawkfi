@@ -87,10 +87,10 @@ const ParkingListPage = () => {
               id={parking.id} 
               name={parking.name} 
               address={parking.address} 
-              price={parking.hourly_price} 
+              price={parking.price} 
               availableSpots={parking.availableSpots} 
-              totalSpots={parking.total_spots} 
-              imageUrl={parking.image_url || undefined}
+              totalSpots={parking.totalSpots} 
+              imageUrl={parking.imageUrl || undefined}
             />
           ))
         ) : (

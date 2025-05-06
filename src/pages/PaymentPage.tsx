@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import PageContainer from '@/components/ui-components/PageContainer';
@@ -100,7 +101,7 @@ const PaymentPage = () => {
       
       <div className="mb-6">
         <h2 className="font-semibold mb-2">Pay with Wallet</h2>
-        <WalletCard balance={balance} onAddFunds={handleAddFunds} />
+        <WalletCard onAddFunds={handleAddFunds} />
         
         {balance < bookingDetails.price && (
           <p className="text-destructive text-sm mt-2">
