@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { MapPin } from 'lucide-react';
+import ParkingImage from '@/components/parking/ParkingImage';
 
 interface ParkingHeaderProps {
   name: string;
@@ -18,12 +19,8 @@ const ParkingHeader = ({
   return (
     <>
       {imageUrl && (
-        <div className="h-48 -mx-4 mb-4 overflow-hidden rounded-b-lg">
-          <img 
-            src={imageUrl} 
-            alt={name} 
-            className="w-full h-full object-cover"
-          />
+        <div className="-mx-4 mb-4 overflow-hidden rounded-b-lg">
+          <ParkingImage imageUrl={imageUrl} name={name} height="h-48" />
         </div>
       )}
       
