@@ -2,11 +2,15 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PageContainer from '@/components/ui-components/PageContainer';
-import ParkingSpotGrid, { SpotStatus } from '@/components/parking/ParkingSpotGrid';
 import { Button } from '@/components/ui/button';
-import { MapPin, CreditCard, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { SpotStatus } from '@/components/parking/ParkingSpotGrid';
+import ParkingHeader from '@/components/parking/ParkingHeader';
+import ParkingInfo from '@/components/parking/ParkingInfo';
+import ParkingSpotSelection from '@/components/parking/ParkingSpotSelection';
+import DurationSelector from '@/components/parking/DurationSelector';
+import PaymentSummary from '@/components/parking/PaymentSummary';
 
 interface ParkingLocation {
   id: string;
@@ -148,88 +152,39 @@ const ParkingDetailsPage = () => {
   
   return (
     <PageContainer className="pb-20">
-      {parkingLot?.image_url && (
-        <div className="h-48 -mx-4 mb-4 overflow-hidden rounded-b-lg">
-          <img 
-            src={parkingLot.image_url} 
-            alt={parkingLot.name} 
-            className="w-full h-full object-cover"
-          />
-        </div>
-      )}
+      <ParkingHeader 
+        name={parkingLot.name} 
+        address={parkingLot.address}
+        description={parkingLot.description}
+        imageUrl={parkingLot.image_url}
+      />
       
-      <h1 className="text-xl font-bold mb-2">{parkingLot?.name}</h1>
+      <ParkingInfo 
+        hourlyPrice={parkingLot.hourly_price}
+        availableSpots={parkingLot.availableSpots}
+        totalSpots={parkingLot.totalSpots}
+      />
       
-      <div className="flex items-center text-muted-foreground mb-4">
-        <MapPin size={16} className="mr-1" />
-        <p className="text-sm">{parkingLot?.address}</p>
-      </div>
-      
-      <p className="text-sm mb-6">{parkingLot?.description}</p>
-      
-      <div className="bg-secondary rounded-lg p-4 flex justify-between items-center mb-6">
-        <div>
-          <p className="text-sm text-muted-foreground">Price per hour</p>
-          <p className="text-xl font-bold text-primary">{parkingLot?.hourly_price} DZD</p>
-        </div>
-        <div>
-          <p className="text-sm text-muted-foreground">Available</p>
-          <p className="text-xl font-bold">{parkingLot?.availableSpots}/{parkingLot?.totalSpots}</p>
-        </div>
-      </div>
-      
-      <h2 className="font-semibold mb-4">Select a Parking Spot</h2>
-      
-      {!isLoading && parkingLot && (
-        <ParkingSpotGrid 
-          spots={spots} 
-          onSpotSelect={handleSpotSelect}
-          selectedSpotId={selectedSpotId || undefined}
-        />
-      )}
+      <ParkingSpotSelection
+        spots={spots}
+        selectedSpotId={selectedSpotId}
+        onSpotSelect={handleSpotSelect}
+        isLoading={isLoading}
+      />
       
       {selectedSpotId && (
         <div className="mt-6 space-y-4">
-          <div>
-            <h3 className="font-medium mb-2">Select Duration</h3>
-            <div className="flex space-x-2">
-              {[1, 2, 3, 4].map((hours) => (
-                <button
-                  key={hours}
-                  onClick={() => setDuration(hours)}
-                  className={`flex-1 py-2 px-4 rounded-md border text-center ${
-                    duration === hours 
-                      ? 'bg-primary text-white border-primary' 
-                      : 'border-border bg-card'
-                  }`}
-                >
-                  {hours}h
-                </button>
-              ))}
-            </div>
-          </div>
+          <DurationSelector 
+            duration={duration} 
+            setDuration={setDuration} 
+          />
           
-          <div className="bg-secondary rounded-lg p-4 space-y-2">
-            <div className="flex justify-between">
-              <p>Spot</p>
-              <p className="font-medium">{spots.find(s => s.id === selectedSpotId)?.label}</p>
-            </div>
-            <div className="flex justify-between">
-              <p>Duration</p>
-              <p className="font-medium">{duration} hour{duration > 1 ? 's' : ''}</p>
-            </div>
-            <div className="flex justify-between">
-              <p>Price</p>
-              <p className="font-bold text-primary">{parkingLot?.hourly_price * duration} DZD</p>
-            </div>
-          </div>
-          
-          <Button 
-            className="w-full btn-primary"
-            onClick={handleProceedToPayment}
-          >
-            Proceed to Payment
-          </Button>
+          <PaymentSummary
+            spotLabel={spots.find(s => s.id === selectedSpotId)?.label}
+            duration={duration}
+            hourlyPrice={parkingLot.hourly_price}
+            onProceedToPayment={handleProceedToPayment}
+          />
         </div>
       )}
     </PageContainer>
