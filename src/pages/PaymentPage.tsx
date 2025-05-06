@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import PageContainer from '@/components/ui-components/PageContainer';
@@ -6,16 +5,15 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { CreditCard, Clock, CheckCircle } from 'lucide-react';
 import WalletCard from '@/components/payment/WalletCard';
+import { useWallet } from '@/contexts/WalletContext';
 
 const PaymentPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { balance, refreshBalance } = useWallet();
   
   const [isProcessing, setIsProcessing] = useState(false);
-  
-  // Mock wallet balance - would come from user state/context
-  const walletBalance = 2500;
   
   // Get booking details from location state
   const bookingDetails = location.state || {
@@ -32,10 +30,11 @@ const PaymentPage = () => {
       title: "Add Funds",
       description: "This feature would normally open a dialog to add funds to your wallet.",
     });
+    refreshBalance();
   };
   
   const handleMakePayment = () => {
-    if (walletBalance < bookingDetails.price) {
+    if (balance < bookingDetails.price) {
       toast({
         title: "Insufficient Funds",
         description: "Please add more funds to your wallet to complete this booking.",
@@ -101,9 +100,9 @@ const PaymentPage = () => {
       
       <div className="mb-6">
         <h2 className="font-semibold mb-2">Pay with Wallet</h2>
-        <WalletCard balance={walletBalance} onAddFunds={handleAddFunds} />
+        <WalletCard balance={balance} onAddFunds={handleAddFunds} />
         
-        {walletBalance < bookingDetails.price && (
+        {balance < bookingDetails.price && (
           <p className="text-destructive text-sm mt-2">
             Insufficient balance. Please add funds to continue.
           </p>
@@ -113,7 +112,7 @@ const PaymentPage = () => {
       <Button 
         className="w-full btn-primary"
         onClick={handleMakePayment}
-        disabled={isProcessing || walletBalance < bookingDetails.price}
+        disabled={isProcessing || balance < bookingDetails.price}
       >
         {isProcessing ? (
           <span className="flex items-center">

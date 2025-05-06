@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import PageContainer from '@/components/ui-components/PageContainer';
 import ParkingLotCard from '@/components/parking/ParkingLotCard';
 import { Input } from '@/components/ui/input';
@@ -34,10 +34,13 @@ const ParkingListPage = () => {
           throw error;
         }
         
-        return data.map(location => ({
-          ...location,
-          availableSpots: location.available_spots,
+        return data.map((location: ParkingLocation) => ({
+          id: location.id,
+          name: location.name,
+          address: location.address,
           price: Number(location.hourly_price),
+          availableSpots: location.available_spots,
+          totalSpots: location.total_spots,
           imageUrl: location.image_url
         }));
       } catch (error: any) {

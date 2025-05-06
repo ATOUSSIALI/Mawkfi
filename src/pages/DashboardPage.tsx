@@ -38,7 +38,9 @@ const DashboardPage = () => {
           console.error('Error fetching parking:', parkingError);
         } else if (parkingData) {
           setNearbyParking(parkingData.map(parking => ({
-            ...parking,
+            id: parking.id,
+            name: parking.name,
+            address: parking.address,
             price: Number(parking.hourly_price),
             availableSpots: parking.available_spots,
             totalSpots: parking.total_spots,

@@ -76,7 +76,7 @@ const ParkingDetailsPage = () => {
       return data.map(slot => ({
         id: slot.id,
         label: slot.slot_label,
-        status: slot.is_occupied ? 'occupied' : 'available'
+        status: slot.is_occupied ? 'occupied' as SpotStatus : 'available' as SpotStatus
       }));
     },
     enabled: !!id

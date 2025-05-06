@@ -72,6 +72,7 @@ export type Database = {
       parking_locations: {
         Row: {
           address: string
+          available_spots: number | null
           created_at: string
           hourly_price: number
           id: string
@@ -82,6 +83,7 @@ export type Database = {
         }
         Insert: {
           address: string
+          available_spots?: number | null
           created_at?: string
           hourly_price: number
           id?: string
@@ -92,6 +94,7 @@ export type Database = {
         }
         Update: {
           address?: string
+          available_spots?: number | null
           created_at?: string
           hourly_price?: number
           id?: string
@@ -225,7 +228,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      add_funds: {
+        Args: {
+          amount_to_add: number
+          user_id_input: string
+          description_input: string
+        }
+        Returns: undefined
+      }
+      recalculate_available_spots: {
+        Args: { location_id: string }
+        Returns: undefined
+      }
+      withdraw_funds: {
+        Args: {
+          amount_to_withdraw: number
+          user_id_input: string
+          description_input: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

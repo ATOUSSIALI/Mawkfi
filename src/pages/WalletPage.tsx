@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import PageContainer from '@/components/ui-components/PageContainer';
 import { Button } from '@/components/ui/button';
@@ -22,7 +23,7 @@ const WalletPage = () => {
   const { balance, refreshBalance } = useWallet();
   
   // Mock wallet data - would normally come from user context/state
-  const [amount, setAmount] = useState('');
+  const [amount, setAmount] = useState<number | ''>('');
   const [showAddFundsForm, setShowAddFundsForm] = useState(false);
   const [showWithdrawForm, setShowWithdrawForm] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -70,7 +71,7 @@ const WalletPage = () => {
   }, []);
   
   const handleAddFunds = async () => {
-    const addAmount = parseInt(amount);
+    const addAmount = Number(amount);
     
     if (!addAmount || addAmount <= 0) {
       toast({
@@ -137,7 +138,7 @@ const WalletPage = () => {
   };
   
   const handleWithdraw = async () => {
-    const withdrawAmount = parseInt(amount);
+    const withdrawAmount = Number(amount);
     
     if (!withdrawAmount || withdrawAmount <= 0) {
       toast({
