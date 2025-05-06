@@ -1,11 +1,12 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageContainer from '@/components/ui-components/PageContainer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Wallet, Plus, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useWallet } from '@/contexts/WalletContext';
 
 // Mock transaction type
 interface Transaction {
@@ -18,46 +19,57 @@ interface Transaction {
 
 const WalletPage = () => {
   const { toast } = useToast();
+  const { balance, refreshBalance } = useWallet();
   
   // Mock wallet data - would normally come from user context/state
-  const [balance, setBalance] = useState(2500);
   const [amount, setAmount] = useState('');
   const [showAddFundsForm, setShowAddFundsForm] = useState(false);
   const [showWithdrawForm, setShowWithdrawForm] = useState(false);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isLoadingTransactions, setIsLoadingTransactions] = useState(true);
   
-  // Mock transaction data - would normally come from API/Supabase
-  const transactions: Transaction[] = [
-    {
-      id: '1',
-      amount: 2000,
-      type: 'deposit',
-      description: 'Added funds',
-      date: '2025-05-01 14:23',
-    },
-    {
-      id: '2',
-      amount: 300,
-      type: 'payment',
-      description: 'Central Parking Algiers',
-      date: '2025-05-02 10:15',
-    },
-    {
-      id: '3',
-      amount: 1000,
-      type: 'deposit',
-      description: 'Added funds',
-      date: '2025-05-03 16:30',
-    },
-    {
-      id: '4',
-      amount: 200,
-      type: 'withdrawal',
-      description: 'Funds withdrawal',
-      date: '2025-05-04 09:45',
-    },
-  ];
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      setIsLoadingTransactions(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          throw new Error('No authenticated user found');
+        }
+        
+        const { data, error } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+          
+        if (error) {
+          throw error;
+        }
+        
+        if (data) {
+          const formattedTransactions: Transaction[] = data.map(tx => ({
+            id: tx.id,
+            amount: Number(tx.amount),
+            type: tx.type as 'deposit' | 'withdrawal' | 'payment',
+            description: tx.description || '',
+            date: new Date(tx.created_at).toLocaleString(),
+          }));
+          
+          setTransactions(formattedTransactions);
+        }
+      } catch (error) {
+        console.error('Error fetching transactions:', error);
+      } finally {
+        setIsLoadingTransactions(false);
+      }
+    };
+    
+    fetchTransactions();
+  }, []);
   
-  const handleAddFunds = () => {
+  const handleAddFunds = async () => {
     const addAmount = parseInt(amount);
     
     if (!addAmount || addAmount <= 0) {
@@ -69,21 +81,62 @@ const WalletPage = () => {
       return;
     }
     
-    // Update balance
-    setBalance(prev => prev + addAmount);
-    
-    // Show success message
-    toast({
-      title: "Funds Added",
-      description: `${addAmount} DZD has been added to your wallet.`,
-    });
-    
-    // Reset form
-    setAmount('');
-    setShowAddFundsForm(false);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('No authenticated user found');
+      }
+      
+      // Start a transaction
+      await supabase.rpc('add_funds', { 
+        amount_to_add: addAmount,
+        user_id_input: user.id,
+        description_input: 'Added funds'
+      });
+      
+      // Refresh wallet balance
+      await refreshBalance();
+      
+      // Show success message
+      toast({
+        title: "Funds Added",
+        description: `${addAmount} DZD has been added to your wallet.`,
+      });
+      
+      // Reset form
+      setAmount('');
+      setShowAddFundsForm(false);
+      
+      // Refresh transactions
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+        
+      if (!error && data) {
+        const formattedTransactions: Transaction[] = data.map(tx => ({
+          id: tx.id,
+          amount: Number(tx.amount),
+          type: tx.type as 'deposit' | 'withdrawal' | 'payment',
+          description: tx.description || '',
+          date: new Date(tx.created_at).toLocaleString(),
+        }));
+        
+        setTransactions(formattedTransactions);
+      }
+    } catch (error) {
+      console.error('Error adding funds:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add funds. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
   
-  const handleWithdraw = () => {
+  const handleWithdraw = async () => {
     const withdrawAmount = parseInt(amount);
     
     if (!withdrawAmount || withdrawAmount <= 0) {
@@ -104,18 +157,59 @@ const WalletPage = () => {
       return;
     }
     
-    // Update balance
-    setBalance(prev => prev - withdrawAmount);
-    
-    // Show success message
-    toast({
-      title: "Funds Withdrawn",
-      description: `${withdrawAmount} DZD has been withdrawn from your wallet.`,
-    });
-    
-    // Reset form
-    setAmount('');
-    setShowWithdrawForm(false);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('No authenticated user found');
+      }
+      
+      // Start a transaction
+      await supabase.rpc('withdraw_funds', { 
+        amount_to_withdraw: withdrawAmount,
+        user_id_input: user.id,
+        description_input: 'Funds withdrawal'
+      });
+      
+      // Refresh wallet balance
+      await refreshBalance();
+      
+      // Show success message
+      toast({
+        title: "Funds Withdrawn",
+        description: `${withdrawAmount} DZD has been withdrawn from your wallet.`,
+      });
+      
+      // Reset form
+      setAmount('');
+      setShowWithdrawForm(false);
+      
+      // Refresh transactions
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+        
+      if (!error && data) {
+        const formattedTransactions: Transaction[] = data.map(tx => ({
+          id: tx.id,
+          amount: Number(tx.amount),
+          type: tx.type as 'deposit' | 'withdrawal' | 'payment',
+          description: tx.description || '',
+          date: new Date(tx.created_at).toLocaleString(),
+        }));
+        
+        setTransactions(formattedTransactions);
+      }
+    } catch (error) {
+      console.error('Error withdrawing funds:', error);
+      toast({
+        title: "Error",
+        description: "Failed to withdraw funds. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
   
   return (
@@ -249,13 +343,27 @@ const WalletPage = () => {
         </TabsList>
         
         <TabsContent value="all" className="space-y-3">
-          {transactions.map((transaction) => (
-            <TransactionItem key={transaction.id} transaction={transaction} />
-          ))}
+          {isLoadingTransactions ? (
+            <div className="text-center py-4">
+              <p className="text-muted-foreground">Loading transactions...</p>
+            </div>
+          ) : transactions.length > 0 ? (
+            transactions.map((transaction) => (
+              <TransactionItem key={transaction.id} transaction={transaction} />
+            ))
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-muted-foreground">No transactions found</p>
+            </div>
+          )}
         </TabsContent>
         
         <TabsContent value="in" className="space-y-3">
-          {transactions
+          {isLoadingTransactions ? (
+            <div className="text-center py-4">
+              <p className="text-muted-foreground">Loading transactions...</p>
+            </div>
+          ) : transactions
             .filter(t => t.type === 'deposit')
             .map((transaction) => (
               <TransactionItem key={transaction.id} transaction={transaction} />
@@ -263,7 +371,11 @@ const WalletPage = () => {
         </TabsContent>
         
         <TabsContent value="out" className="space-y-3">
-          {transactions
+          {isLoadingTransactions ? (
+            <div className="text-center py-4">
+              <p className="text-muted-foreground">Loading transactions...</p>
+            </div>
+          ) : transactions
             .filter(t => t.type === 'withdrawal' || t.type === 'payment')
             .map((transaction) => (
               <TransactionItem key={transaction.id} transaction={transaction} />

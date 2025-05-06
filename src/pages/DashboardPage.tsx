@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import PageContainer from '@/components/ui-components/PageContainer';
 import ParkingLotCard from '@/components/parking/ParkingLotCard';
@@ -8,10 +7,11 @@ import { BookingDetails } from '@/components/bookings/BookingCard';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import { useWallet } from '@/contexts/WalletContext';
 
 const DashboardPage = () => {
   const { toast } = useToast();
-  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const { refreshBalance } = useWallet();
   const [nearbyParking, setNearbyParking] = useState<any[]>([]);
   const [activeBooking, setActiveBooking] = useState<BookingDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -28,48 +28,22 @@ const DashboardPage = () => {
           return;
         }
         
-        // Fetch wallet balance
-        const { data: walletData, error: walletError } = await supabase
-          .from('wallets')
-          .select('balance')
-          .eq('id', user.id)
-          .single();
-          
-        if (walletError) {
-          console.error('Error fetching wallet:', walletError);
-        } else if (walletData) {
-          setWalletBalance(Number(walletData.balance));
-        }
-        
         // Fetch nearby parking
         const { data: parkingData, error: parkingError } = await supabase
           .from('parking_locations')
-          .select('id, name, address, hourly_price, total_spots, image_url')
+          .select('id, name, address, hourly_price, total_spots, available_spots, image_url')
           .limit(2);
           
         if (parkingError) {
           console.error('Error fetching parking:', parkingError);
         } else if (parkingData) {
-          // Get available spots count for each parking location
-          const enhancedParkingData = await Promise.all(
-            parkingData.map(async (parking) => {
-              const { count, error: spotsError } = await supabase
-                .from('parking_slots')
-                .select('*', { count: 'exact', head: true })
-                .eq('parking_location_id', parking.id)
-                .eq('is_occupied', false);
-                
-              return {
-                ...parking,
-                price: Number(parking.hourly_price),
-                availableSpots: count || 0,
-                totalSpots: parking.total_spots,
-                imageUrl: parking.image_url
-              };
-            })
-          );
-          
-          setNearbyParking(enhancedParkingData);
+          setNearbyParking(parkingData.map(parking => ({
+            ...parking,
+            price: Number(parking.hourly_price),
+            availableSpots: parking.available_spots,
+            totalSpots: parking.total_spots,
+            imageUrl: parking.image_url
+          })));
         }
         
         // Fetch active booking
@@ -123,13 +97,14 @@ const DashboardPage = () => {
       title: "Add Funds",
       description: "This feature would normally open a dialog to add funds to your wallet.",
     });
+    refreshBalance();
   };
   
   return (
     <PageContainer className="pb-20">
       <h1 className="text-2xl font-bold mb-6">Welcome back!</h1>
       
-      <WalletCard balance={walletBalance} onAddFunds={handleAddFunds} />
+      <WalletCard onAddFunds={handleAddFunds} />
       
       {activeBooking ? (
         <div className="mt-6">

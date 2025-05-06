@@ -7,6 +7,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { User, LogOut, CreditCard, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useWallet } from '@/contexts/WalletContext';
+import { useQuery } from '@tanstack/react-query';
 
 interface UserProfile {
   fullName: string;
@@ -16,59 +18,50 @@ interface UserProfile {
 
 const ProfilePage = () => {
   const { toast } = useToast();
-  const [user, setUser] = useState<UserProfile>({
+  const { balance } = useWallet();
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState<UserProfile>({
     fullName: '',
     email: '',
     phone: '',
   });
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState<UserProfile>({ ...user });
-  const [isLoading, setIsLoading] = useState(true);
   
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      setIsLoading(true);
-      try {
-        // Get authenticated user
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-        
-        if (!authUser) {
-          console.error('No authenticated user found');
-          return;
-        }
-        
-        // Get user profile data
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('full_name, phone')
-          .eq('id', authUser.id)
-          .single();
-          
-        if (profileError) {
-          console.error('Error fetching profile:', profileError);
-        }
-        
-        // Set user data
-        setUser({
-          fullName: profileData?.full_name || '',
-          email: authUser.email || '',
-          phone: profileData?.phone || '',
-        });
-        
-        setFormData({
-          fullName: profileData?.full_name || '',
-          email: authUser.email || '',
-          phone: profileData?.phone || '',
-        });
-      } catch (error) {
-        console.error('Error fetching user profile:', error);
-      } finally {
-        setIsLoading(false);
+  const { data: user, isLoading } = useQuery({
+    queryKey: ['userProfile'],
+    queryFn: async () => {
+      // Get authenticated user
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      
+      if (!authUser) {
+        throw new Error('No authenticated user found');
       }
-    };
-    
-    fetchUserProfile();
-  }, []);
+      
+      // Get user profile data
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('full_name, phone')
+        .eq('id', authUser.id)
+        .single();
+        
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+      }
+      
+      // Set user data
+      return {
+        fullName: profileData?.full_name || '',
+        email: authUser.email || '',
+        phone: profileData?.phone || '',
+      };
+    }
+  });
+  
+  // Set form data when user data is loaded
+  useEffect(() => {
+    if (user) {
+      setFormData(user);
+    }
+  }, [user]);
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -103,8 +96,6 @@ const ProfilePage = () => {
         throw error;
       }
       
-      // Update local state
-      setUser(formData);
       setIsEditing(false);
       
       toast({
@@ -159,11 +150,11 @@ const ProfilePage = () => {
       <div className="flex flex-col items-center mb-8">
         <Avatar className="w-24 h-24 mb-4">
           <AvatarFallback className="bg-primary text-white text-xl">
-            {user.fullName ? user.fullName.split(' ').map(name => name[0]).join('') : '?'}
+            {formData.fullName ? formData.fullName.split(' ').map(name => name[0]).join('') : '?'}
           </AvatarFallback>
         </Avatar>
-        <h2 className="text-xl font-semibold">{user.fullName || 'User'}</h2>
-        <p className="text-muted-foreground">{user.email}</p>
+        <h2 className="text-xl font-semibold">{formData.fullName || 'User'}</h2>
+        <p className="text-muted-foreground">{formData.email}</p>
       </div>
       
       {isEditing ? (
@@ -221,7 +212,7 @@ const ProfilePage = () => {
               variant="outline"
               className="flex-1"
               onClick={() => {
-                setFormData({ ...user });
+                setFormData(user || { fullName: '', email: '', phone: '' });
                 setIsEditing(false);
               }}
             >
@@ -231,7 +222,7 @@ const ProfilePage = () => {
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="bg-card rounded-lg border p-4">
+          <div className="bg-card rounded-lg border p-4 mb-4">
             <h3 className="font-medium mb-3 flex items-center">
               <User size={18} className="mr-2 text-primary" />
               Personal Information
@@ -240,16 +231,28 @@ const ProfilePage = () => {
             <div className="space-y-3">
               <div>
                 <p className="text-sm text-muted-foreground">Full Name</p>
-                <p className="font-medium">{user.fullName || 'Not set'}</p>
+                <p className="font-medium">{formData.fullName || 'Not set'}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Email Address</p>
-                <p className="font-medium">{user.email}</p>
+                <p className="font-medium">{formData.email}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Phone Number</p>
-                <p className="font-medium">{user.phone || 'Not set'}</p>
+                <p className="font-medium">{formData.phone || 'Not set'}</p>
               </div>
+            </div>
+          </div>
+          
+          <div className="bg-card rounded-lg border p-4">
+            <h3 className="font-medium mb-3 flex items-center">
+              <CreditCard size={18} className="mr-2 text-primary" />
+              Wallet Information
+            </h3>
+            
+            <div>
+              <p className="text-sm text-muted-foreground">Current Balance</p>
+              <p className="font-medium text-xl text-primary">{balance.toLocaleString()} DZD</p>
             </div>
           </div>
           

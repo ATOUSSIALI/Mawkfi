@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
 
 interface ParkingLocation {
   id: string;
@@ -13,49 +14,32 @@ interface ParkingLocation {
   address: string;
   hourly_price: number;
   total_spots: number;
+  available_spots: number;
   image_url: string | null;
-  availableSpots: number;
 }
 
 const ParkingListPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [parkingLots, setParkingLots] = useState<ParkingLocation[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   
-  useEffect(() => {
-    const fetchParkingLocations = async () => {
-      setIsLoading(true);
+  const { data: parkingLots, isLoading } = useQuery({
+    queryKey: ['parkingLocations'],
+    queryFn: async () => {
       try {
-        const { data: parkingData, error: parkingError } = await supabase
+        const { data, error } = await supabase
           .from('parking_locations')
-          .select('id, name, address, hourly_price, total_spots, image_url');
+          .select('id, name, address, hourly_price, total_spots, available_spots, image_url');
           
-        if (parkingError) {
-          throw parkingError;
+        if (error) {
+          throw error;
         }
         
-        // Get available spots count for each parking location
-        const enhancedParkingData = await Promise.all(
-          (parkingData || []).map(async (parking) => {
-            const { count, error: spotsError } = await supabase
-              .from('parking_slots')
-              .select('*', { count: 'exact', head: true })
-              .eq('parking_location_id', parking.id)
-              .eq('is_occupied', false);
-              
-            if (spotsError) {
-              console.error('Error fetching available spots:', spotsError);
-            }
-              
-            return {
-              ...parking,
-              availableSpots: count || 0
-            };
-          })
-        );
-        
-        setParkingLots(enhancedParkingData);
+        return data.map(location => ({
+          ...location,
+          availableSpots: location.available_spots,
+          price: Number(location.hourly_price),
+          imageUrl: location.image_url
+        }));
       } catch (error: any) {
         console.error('Error fetching parking locations:', error);
         toast({
@@ -63,19 +47,16 @@ const ParkingListPage = () => {
           description: error.message || "Please try again later.",
           variant: "destructive"
         });
-      } finally {
-        setIsLoading(false);
+        return [];
       }
-    };
-    
-    fetchParkingLocations();
-  }, [toast]);
+    }
+  });
   
-  const filteredParkingLots = parkingLots.filter(
+  const filteredParkingLots = parkingLots?.filter(
     (parking) => 
       parking.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       parking.address.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  ) || [];
   
   return (
     <PageContainer className="pb-20">

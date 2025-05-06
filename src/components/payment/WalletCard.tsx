@@ -2,13 +2,16 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Wallet } from 'lucide-react';
+import WalletBalanceDisplay from './WalletBalanceDisplay';
+import { useWallet } from '@/contexts/WalletContext';
 
 interface WalletCardProps {
-  balance: number;
   onAddFunds: () => void;
 }
 
-const WalletCard = ({ balance, onAddFunds }: WalletCardProps) => {
+const WalletCard = ({ onAddFunds }: WalletCardProps) => {
+  const { balance } = useWallet();
+  
   return (
     <div className="bg-gradient-to-r from-primary to-green-600 rounded-lg p-4 text-white">
       <div className="flex justify-between items-center mb-4">

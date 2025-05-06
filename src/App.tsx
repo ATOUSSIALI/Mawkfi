@@ -3,9 +3,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "./integrations/supabase/client";
+import { WalletProvider } from "./contexts/WalletContext";
 import NotFound from "./pages/NotFound";
 import WelcomePage from "./pages/WelcomePage";
 import LoginPage from "./pages/LoginPage";
@@ -21,7 +23,14 @@ import ProfilePage from "./pages/ProfilePage";
 import WalletPage from "./pages/WalletPage";
 import MainLayout from "./layouts/MainLayout";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 30000,
+    },
+  },
+});
 
 const App = () => {
   const [session, setSession] = useState<any>(null);
@@ -66,7 +75,13 @@ const App = () => {
             <Route path="/register" element={session ? <Navigate to="/dashboard" replace /> : <RegisterPage />} />
             
             {/* Protected routes */}
-            <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+            <Route element={
+              <ProtectedRoute>
+                <WalletProvider>
+                  <MainLayout />
+                </WalletProvider>
+              </ProtectedRoute>
+            }>
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/parking" element={<ParkingListPage />} />
               <Route path="/parking/:id" element={<ParkingDetailsPage />} />
@@ -82,6 +97,7 @@ const App = () => {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
+        <ReactQueryDevtools initialIsOpen={false} />
       </TooltipProvider>
     </QueryClientProvider>
   );

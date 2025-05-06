@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PageContainer from '@/components/ui-components/PageContainer';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import ParkingInfo from '@/components/parking/ParkingInfo';
 import ParkingSpotSelection from '@/components/parking/ParkingSpotSelection';
 import DurationSelector from '@/components/parking/DurationSelector';
 import PaymentSummary from '@/components/parking/PaymentSummary';
+import { useQuery } from '@tanstack/react-query';
 
 interface ParkingLocation {
   id: string;
@@ -19,8 +20,8 @@ interface ParkingLocation {
   hourly_price: number;
   image_url: string | null;
   description?: string;
-  availableSpots: number;
-  totalSpots: number;
+  available_spots: number;
+  total_spots: number;
 }
 
 interface ParkingSpot {
@@ -34,77 +35,54 @@ const ParkingDetailsPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const [parkingLot, setParkingLot] = useState<ParkingLocation | null>(null);
-  const [spots, setSpots] = useState<ParkingSpot[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [selectedSpotId, setSelectedSpotId] = useState<string | null>(null);
   const [duration, setDuration] = useState(1); // Default 1 hour
 
-  useEffect(() => {
-    const fetchParkingDetails = async () => {
-      setIsLoading(true);
-      try {
-        // Fetch parking location details
-        const { data: parkingData, error: parkingError } = await supabase
-          .from('parking_locations')
-          .select('*')
-          .eq('id', id)
-          .single();
-          
-        if (parkingError) {
-          throw parkingError;
-        }
+  const { data: parkingLot, isLoading: isLoadingParking } = useQuery({
+    queryKey: ['parkingLocation', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('parking_locations')
+        .select('*')
+        .eq('id', id)
+        .single();
+        
+      if (error) throw error;
+      
+      return {
+        id: data.id,
+        name: data.name,
+        address: data.address,
+        hourly_price: Number(data.hourly_price),
+        image_url: data.image_url,
+        description: "Located in a convenient area with easy access and secure facilities.",
+        available_spots: data.available_spots,
+        total_spots: data.total_spots
+      };
+    },
+    enabled: !!id
+  });
 
-        // Fetch all parking slots for this location
-        const { data: slotsData, error: slotsError } = await supabase
-          .from('parking_slots')
-          .select('*')
-          .eq('parking_location_id', id);
-          
-        if (slotsError) {
-          throw slotsError;
-        }
-
-        // Count available spots
-        const availableSpots = slotsData.filter(slot => !slot.is_occupied).length;
+  const { data: spots = [], isLoading: isLoadingSpots } = useQuery({
+    queryKey: ['parkingSpots', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('parking_slots')
+        .select('*')
+        .eq('parking_location_id', id);
         
-        // Set up parking location data
-        setParkingLot({
-          id: parkingData.id,
-          name: parkingData.name,
-          address: parkingData.address,
-          hourly_price: Number(parkingData.hourly_price),
-          image_url: parkingData.image_url,
-          description: "Located in a convenient area with easy access and secure facilities.",
-          availableSpots,
-          totalSpots: parkingData.total_spots
-        });
-        
-        // Set up parking spots data
-        const formattedSpots: ParkingSpot[] = slotsData.map(slot => ({
-          id: slot.id,
-          label: slot.slot_label,
-          status: slot.is_occupied ? 'occupied' : 'available'
-        }));
-        
-        setSpots(formattedSpots);
-      } catch (error: any) {
-        console.error('Error fetching parking details:', error);
-        toast({
-          title: "Error loading parking details",
-          description: error.message || "Please try again later.",
-          variant: "destructive"
-        });
-        navigate('/parking');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    if (id) {
-      fetchParkingDetails();
-    }
-  }, [id, navigate, toast]);
+      if (error) throw error;
+      
+      return data.map(slot => ({
+        id: slot.id,
+        label: slot.slot_label,
+        status: slot.is_occupied ? 'occupied' : 'available'
+      }));
+    },
+    enabled: !!id
+  });
+  
+  const isLoading = isLoadingParking || isLoadingSpots;
   
   const handleSpotSelect = (spotId: string) => {
     setSelectedSpotId(spotId === selectedSpotId ? null : spotId);
@@ -161,8 +139,8 @@ const ParkingDetailsPage = () => {
       
       <ParkingInfo 
         hourlyPrice={parkingLot.hourly_price}
-        availableSpots={parkingLot.availableSpots}
-        totalSpots={parkingLot.totalSpots}
+        availableSpots={parkingLot.available_spots}
+        totalSpots={parkingLot.total_spots}
       />
       
       <ParkingSpotSelection
