@@ -2,6 +2,7 @@
 import React from 'react';
 import ParkingSpotGrid, { SpotStatus } from '@/components/parking/ParkingSpotGrid';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ParkingSpot {
   id: string;
@@ -23,7 +24,19 @@ const ParkingSpotSelection = ({
   isLoading
 }: ParkingSpotSelectionProps) => {
   if (isLoading) {
-    return <div className="text-center py-4">Loading parking spots...</div>;
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center mb-4">
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="h-6 w-40" />
+        </div>
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+          {[...Array(8)].map((_, i) => (
+            <Skeleton key={i} className="h-12 rounded-md" />
+          ))}
+        </div>
+      </div>
+    );
   }
   
   const availableCount = spots.filter(spot => spot.status === 'available').length;
@@ -43,11 +56,23 @@ const ParkingSpotSelection = ({
         </div>
       </div>
       
-      <ParkingSpotGrid 
-        spots={spots} 
-        onSpotSelect={onSpotSelect}
-        selectedSpotId={selectedSpotId || undefined}
-      />
+      {spots.length > 0 ? (
+        <ParkingSpotGrid 
+          spots={spots} 
+          onSpotSelect={onSpotSelect}
+          selectedSpotId={selectedSpotId || undefined}
+        />
+      ) : (
+        <div className="text-center py-6 bg-muted/20 rounded-lg border border-dashed">
+          <p className="text-muted-foreground">No parking spots available</p>
+        </div>
+      )}
+      
+      {selectedSpotId && (
+        <div className="mt-3 text-sm text-center text-muted-foreground">
+          <p>Selected spot: {spots.find(s => s.id === selectedSpotId)?.label}</p>
+        </div>
+      )}
     </div>
   );
 };

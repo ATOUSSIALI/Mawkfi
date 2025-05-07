@@ -32,7 +32,7 @@ const PaymentPage = () => {
     price: 150,
   };
   
-  // Check if spot is still available when page loads
+  // Check if spot is still available when page loads and every 15 seconds
   useEffect(() => {
     // First check and expire overdue bookings
     checkAndExpireOverdueBookings();
@@ -51,13 +51,16 @@ const PaymentPage = () => {
         
         // If spot is already occupied, set flag to false
         setIsSpotStillAvailable(!data.is_occupied);
+        
+        if (data.is_occupied) {
+          toast({
+            title: "Spot Taken",
+            description: `Someone just booked spot ${bookingDetails.spotLabel}. Please select another spot.`,
+            variant: "destructive"
+          });
+        }
       } catch (error) {
         console.error('Error checking spot availability:', error);
-        toast({
-          title: "Error",
-          description: "Could not verify spot availability. Please try again.",
-          variant: "destructive"
-        });
       } finally {
         setIsCheckingAvailability(false);
       }
@@ -65,8 +68,13 @@ const PaymentPage = () => {
     
     if (bookingDetails.spotId) {
       checkSpotAvailability();
+      
+      // Set up polling to check availability every 15 seconds
+      const intervalId = setInterval(checkSpotAvailability, 15000);
+      
+      return () => clearInterval(intervalId);
     }
-  }, [bookingDetails.spotId, toast]);
+  }, [bookingDetails.spotId, bookingDetails.spotLabel, toast]);
   
   const handleAddFunds = () => {
     toast({
@@ -78,11 +86,14 @@ const PaymentPage = () => {
   
   const handleMakePayment = async () => {
     // Verify spot is still available right before booking
+    setIsCheckingAvailability(true);
     const { data, error } = await supabase
       .from('parking_slots')
-      .select('is_occupied')
+      .select('is_occupied, slot_label')
       .eq('id', bookingDetails.spotId)
       .single();
+      
+    setIsCheckingAvailability(false);
       
     if (error || data.is_occupied) {
       toast({
@@ -139,6 +150,9 @@ const PaymentPage = () => {
         }
         throw new Error(bookingResult.error?.message || "Failed to create booking");
       }
+
+      // Refresh balance to show updated wallet amount
+      refreshBalance();
       
       // Navigate to confirmation page with booking details
       navigate('/booking/confirmation', {
@@ -223,9 +237,23 @@ const PaymentPage = () => {
         <WalletCard onAddFunds={handleAddFunds} />
         
         {balance < bookingDetails.price && (
-          <p className="text-destructive text-sm mt-2">
-            Insufficient balance. Please add funds to continue.
-          </p>
+          <Alert className="mt-4 bg-amber-50 border-amber-200">
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            <AlertTitle className="text-amber-700">Insufficient Balance</AlertTitle>
+            <AlertDescription className="text-amber-600">
+              <p className="mb-2">
+                You need {bookingDetails.price - balance} DZD more in your wallet to complete this booking.
+              </p>
+              <Button
+                variant="outline" 
+                size="sm" 
+                className="text-amber-700 border-amber-300 hover:bg-amber-100"
+                onClick={handleAddFunds}
+              >
+                Top Up Wallet
+              </Button>
+            </AlertDescription>
+          </Alert>
         )}
       </div>
       

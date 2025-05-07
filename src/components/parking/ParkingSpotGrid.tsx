@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
+import { CheckCircle, CircleParking, CircleParkingOff } from 'lucide-react';
 
 export type SpotStatus = 'available' | 'occupied' | 'selected' | 'reserved';
 
@@ -44,16 +45,16 @@ const ParkingSpotGrid = ({
 
   const getSpotStatusIcon = (status: SpotStatus, isSelected: boolean) => {
     if (isSelected) {
-      return <div className="absolute top-0 right-0 w-2 h-2 bg-green-500 rounded-full m-1"></div>;
+      return <CheckCircle size={16} className="absolute top-0 right-0 m-1 text-white" />;
     }
     
     switch (status) {
       case 'available':
-        return <div className="absolute top-0 right-0 w-2 h-2 bg-green-500 rounded-full m-1"></div>;
+        return <CircleParking size={16} className="absolute top-0 right-0 m-1 text-green-500" />;
       case 'occupied':
-        return <div className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full m-1"></div>;
+        return <CircleParkingOff size={16} className="absolute top-0 right-0 m-1 text-red-500" />;
       case 'reserved':
-        return <div className="absolute top-0 right-0 w-2 h-2 bg-amber-500 rounded-full m-1"></div>;
+        return <CircleParking size={16} className="absolute top-0 right-0 m-1 text-amber-500" />;
       default:
         return null;
     }

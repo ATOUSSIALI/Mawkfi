@@ -46,6 +46,7 @@ const ParkingDetailsPage = () => {
   const [selectedSpotId, setSelectedSpotId] = useState<string | null>(null);
   const [duration, setDuration] = useState(1); // Default 1 hour
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isVerifyingSpot, setIsVerifyingSpot] = useState(false);
 
   // Check and expire overdue bookings when page loads
   useEffect(() => {
@@ -139,6 +140,19 @@ const ParkingDetailsPage = () => {
     setIsRefreshing(true);
     await Promise.all([refetchParkingLot(), refetchSpots()]);
     setIsRefreshing(false);
+    
+    // Clear selected spot if it's no longer available
+    if (selectedSpotId) {
+      const spot = spots.find(s => s.id === selectedSpotId);
+      if (spot && spot.status === 'occupied') {
+        setSelectedSpotId(null);
+        toast({
+          title: "Spot no longer available",
+          description: `The spot ${spot.label} has been taken. Please select another spot.`,
+          variant: "destructive"
+        });
+      }
+    }
   };
   
   const isLoading = isLoadingParking || isLoadingSpots;
@@ -147,12 +161,49 @@ const ParkingDetailsPage = () => {
     setSelectedSpotId(spotId === selectedSpotId ? null : spotId);
   };
   
+  const verifySpotAvailability = async (): Promise<boolean> => {
+    if (!selectedSpotId) return false;
+    
+    setIsVerifyingSpot(true);
+    try {
+      const { data, error } = await supabase
+        .from('parking_slots')
+        .select('is_occupied, slot_label')
+        .eq('id', selectedSpotId)
+        .single();
+        
+      if (error) throw error;
+      
+      if (data.is_occupied) {
+        toast({
+          title: "Spot Unavailable",
+          description: `The spot ${data.slot_label} has just been taken. Please select another spot.`,
+          variant: "destructive"
+        });
+        // Refresh spots to show updated status
+        refetchSpots();
+        setSelectedSpotId(null);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error verifying spot availability:', error);
+      toast({
+        title: "Verification Error",
+        description: "Could not verify spot availability. Please try again.",
+        variant: "destructive"
+      });
+      return false;
+    } finally {
+      setIsVerifyingSpot(false);
+    }
+  };
+  
   const handleProceedToPayment = async () => {
     if (!selectedSpotId || !parkingLot) return;
     
-    const selectedSpot = spots.find(spot => spot.id === selectedSpotId);
-    if (!selectedSpot) return;
-
+    // Verify user is logged in
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       toast({
@@ -163,7 +214,24 @@ const ParkingDetailsPage = () => {
       navigate('/login');
       return;
     }
+    
+    // Verify spot is still available
+    const isAvailable = await verifySpotAvailability();
+    if (!isAvailable) return;
+    
+    // Check wallet balance
+    if (balance < calculateTotalPrice) {
+      toast({
+        title: "Insufficient Balance",
+        description: "Please top up your wallet to proceed with booking.",
+        variant: "destructive"
+      });
+      return;
+    }
 
+    const selectedSpot = spots.find(spot => spot.id === selectedSpotId);
+    if (!selectedSpot) return;
+    
     navigate('/payment', { 
       state: { 
         parkingLotId: parkingLot.id,
@@ -250,6 +318,7 @@ const ParkingDetailsPage = () => {
             duration={duration}
             hourlyPrice={parkingLot.hourly_price}
             onProceedToPayment={handleProceedToPayment}
+            isProcessing={isVerifyingSpot || isProcessing}
           />
           
           {!hasSufficientFunds && (

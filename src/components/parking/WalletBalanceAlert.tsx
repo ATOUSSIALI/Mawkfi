@@ -23,7 +23,7 @@ const WalletBalanceAlert = ({ currentBalance, requiredAmount }: WalletBalanceAle
       <AlertTitle className="text-amber-700">Insufficient Balance</AlertTitle>
       <AlertDescription className="text-amber-600">
         <p className="mb-2">
-          You need {shortfall} DZD more in your wallet to complete this booking.
+          You need {shortfall.toLocaleString()} DZD more in your wallet to complete this booking.
         </p>
         <Link to="/wallet">
           <Button variant="outline" size="sm" className="text-amber-700 border-amber-300 hover:bg-amber-100">

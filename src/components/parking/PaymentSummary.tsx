@@ -7,13 +7,15 @@ interface PaymentSummaryProps {
   duration: number;
   hourlyPrice: number;
   onProceedToPayment: () => void;
+  isProcessing?: boolean;
 }
 
 const PaymentSummary = ({
   spotLabel,
   duration,
   hourlyPrice,
-  onProceedToPayment
+  onProceedToPayment,
+  isProcessing = false
 }: PaymentSummaryProps) => {
   return (
     <div className="space-y-4">
@@ -35,8 +37,9 @@ const PaymentSummary = ({
       <Button 
         className="w-full btn-primary"
         onClick={onProceedToPayment}
+        disabled={isProcessing}
       >
-        Proceed to Payment
+        {isProcessing ? 'Processing...' : 'Proceed to Payment'}
       </Button>
     </div>
   );
