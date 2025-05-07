@@ -14,6 +14,9 @@ import PaymentSummary from '@/components/parking/PaymentSummary';
 import { useQuery } from '@tanstack/react-query';
 import { useParkingBooking } from '@/hooks/use-parking-booking';
 import { checkAndExpireOverdueBookings } from '@/utils/bookingScheduler';
+import { useWallet } from '@/contexts/WalletContext';
+import WalletBalanceDisplay from '@/components/payment/WalletBalanceDisplay';
+import { RefreshCw } from 'lucide-react';
 
 interface ParkingLocation {
   id: string;
@@ -37,16 +40,22 @@ const ParkingDetailsPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { bookSpot, isProcessing } = useParkingBooking();
+  const { balance } = useWallet();
   
   const [selectedSpotId, setSelectedSpotId] = useState<string | null>(null);
   const [duration, setDuration] = useState(1); // Default 1 hour
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Check and expire overdue bookings when page loads
   useEffect(() => {
     checkAndExpireOverdueBookings();
   }, []);
 
-  const { data: parkingLot, isLoading: isLoadingParking } = useQuery({
+  const { 
+    data: parkingLot, 
+    isLoading: isLoadingParking,
+    refetch: refetchParkingLot
+  } = useQuery({
     queryKey: ['parkingLocation', id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -63,7 +72,7 @@ const ParkingDetailsPage = () => {
         address: data.address,
         hourly_price: Number(data.hourly_price),
         image_url: data.image_url,
-        description: "Located in a convenient area with easy access and secure facilities.",
+        description: data.description || "Located in a convenient area with easy access and secure facilities.",
         available_spots: data.available_spots,
         total_spots: data.total_spots
       };
@@ -71,7 +80,11 @@ const ParkingDetailsPage = () => {
     enabled: !!id
   });
 
-  const { data: spots = [], isLoading: isLoadingSpots } = useQuery({
+  const { 
+    data: spots = [], 
+    isLoading: isLoadingSpots,
+    refetch: refetchSpots
+  } = useQuery({
     queryKey: ['parkingSpots', id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -89,6 +102,43 @@ const ParkingDetailsPage = () => {
     },
     enabled: !!id
   });
+  
+  // Set up realtime subscription for parking spots changes
+  useEffect(() => {
+    if (!id) return;
+    
+    const channel = supabase
+      .channel('parking-details-changes')
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'parking_slots',
+        filter: `parking_location_id=eq.${id}`
+      }, () => {
+        // When a slot changes, refresh the spots data
+        refetchSpots();
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'parking_locations',
+        filter: `id=eq.${id}`
+      }, () => {
+        // When the parking location updates (e.g. available_spots changes), refresh it
+        refetchParkingLot();
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id, refetchSpots, refetchParkingLot]);
+  
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await Promise.all([refetchParkingLot(), refetchSpots()]);
+    setIsRefreshing(false);
+  };
   
   const isLoading = isLoadingParking || isLoadingSpots;
   
@@ -125,6 +175,9 @@ const ParkingDetailsPage = () => {
     });
   };
   
+  const calculateTotalPrice = parkingLot ? parkingLot.hourly_price * duration : 0;
+  const hasSufficientFunds = balance >= calculateTotalPrice;
+  
   if (isLoading) {
     return (
       <PageContainer>
@@ -157,6 +210,20 @@ const ParkingDetailsPage = () => {
         imageUrl={parkingLot.image_url}
       />
       
+      <div className="flex justify-between items-center mb-2">
+        <WalletBalanceDisplay variant="compact" />
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={handleRefresh} 
+          disabled={isRefreshing}
+          className="flex items-center gap-1"
+        >
+          <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
+          {isRefreshing ? "Refreshing..." : "Refresh"}
+        </Button>
+      </div>
+      
       <ParkingInfo 
         hourlyPrice={parkingLot.hourly_price}
         availableSpots={parkingLot.available_spots}
@@ -183,6 +250,12 @@ const ParkingDetailsPage = () => {
             hourlyPrice={parkingLot.hourly_price}
             onProceedToPayment={handleProceedToPayment}
           />
+          
+          {!hasSufficientFunds && (
+            <div className="text-destructive text-sm text-center">
+              Insufficient wallet balance. You need {calculateTotalPrice} DZD for this booking.
+            </div>
+          )}
         </div>
       )}
     </PageContainer>

@@ -24,7 +24,7 @@ const ParkingSpotGrid = ({
   className
 }: ParkingSpotGridProps) => {
   const getSpotStyles = (status: SpotStatus, isSelected: boolean): string => {
-    const baseStyles = "flex items-center justify-center rounded-lg p-3 text-center transition-colors";
+    const baseStyles = "flex items-center justify-center rounded-lg p-3 text-center transition-colors relative";
     
     if (isSelected) {
       return cn(baseStyles, "bg-primary text-white border-2 border-primary");
@@ -42,6 +42,23 @@ const ParkingSpotGrid = ({
     }
   };
 
+  const getSpotStatusIcon = (status: SpotStatus, isSelected: boolean) => {
+    if (isSelected) {
+      return <div className="absolute top-0 right-0 w-2 h-2 bg-green-500 rounded-full m-1"></div>;
+    }
+    
+    switch (status) {
+      case 'available':
+        return <div className="absolute top-0 right-0 w-2 h-2 bg-green-500 rounded-full m-1"></div>;
+      case 'occupied':
+        return <div className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full m-1"></div>;
+      case 'reserved':
+        return <div className="absolute top-0 right-0 w-2 h-2 bg-amber-500 rounded-full m-1"></div>;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className={cn("grid grid-cols-3 sm:grid-cols-4 gap-3", className)}>
       {spots.map((spot) => (
@@ -55,6 +72,7 @@ const ParkingSpotGrid = ({
           }}
           aria-disabled={spot.status !== 'available'}
         >
+          {getSpotStatusIcon(spot.status, spot.id === selectedSpotId)}
           {spot.label}
         </div>
       ))}

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
 interface QRCodeProps {
   value: string;
@@ -7,8 +7,16 @@ interface QRCodeProps {
 }
 
 const QRCode = ({ value, size = 200 }: QRCodeProps) => {
-  // This is a mock QR code component for demo purposes
-  // In a real app, we'd use a library like react-qr-code
+  const qrRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    // In a real app, this would use an actual QR code generation library
+    // For now, we're using a free online API to generate QR codes for demonstration
+    if (qrRef.current) {
+      const encodedValue = encodeURIComponent(value);
+      qrRef.current.style.backgroundImage = `url('https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodedValue}')`;
+    }
+  }, [value, size]);
   
   return (
     <div className="flex flex-col items-center justify-center">
@@ -16,7 +24,10 @@ const QRCode = ({ value, size = 200 }: QRCodeProps) => {
         className="bg-white p-4 rounded-lg border" 
         style={{ width: size, height: size }}
       >
-        <div className="w-full h-full bg-[url('https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=MOCK_QR_CODE')] bg-no-repeat bg-center bg-contain" />
+        <div 
+          ref={qrRef}
+          className="w-full h-full bg-no-repeat bg-center bg-contain" 
+        />
       </div>
     </div>
   );

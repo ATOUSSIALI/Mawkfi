@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useWallet } from '@/contexts/WalletContext';
+import { scheduleBookingExpiration } from '@/utils/bookingScheduler';
 
 interface BookingParams {
   parkingLotId: string;
@@ -25,12 +26,29 @@ export function useParkingBooking() {
       spotId, 
       duration, 
       price,
-      userId
+      userId,
+      spotLabel
     } = params;
 
     setIsProcessing(true);
     
     try {
+      // Verify spot is still available
+      const { data: spotData, error: spotError } = await supabase
+        .from('parking_slots')
+        .select('is_occupied')
+        .eq('id', spotId)
+        .single();
+        
+      if (spotError) throw spotError;
+      
+      if (spotData.is_occupied) {
+        return {
+          success: false,
+          error: { message: `Spot ${spotLabel} is already occupied` }
+        };
+      }
+      
       // Calculate start and end times
       const startTime = new Date();
       const endTime = new Date(startTime.getTime() + duration * 60 * 60 * 1000);
@@ -66,11 +84,39 @@ export function useParkingBooking() {
         .eq('id', spotId);
         
       if (slotError) {
+        // If we fail to update the slot, we should cancel the booking
+        await supabase
+          .from('bookings')
+          .delete()
+          .eq('id', bookingData.id);
+          
         throw slotError;
       }
       
       // Deduct the amount from the user's wallet
-      await deductBalance(price, `Parking reservation at spot ${params.spotLabel}`);
+      const paymentResult = await deductBalance(price, `Parking reservation at spot ${params.spotLabel}`);
+      
+      if (!paymentResult) {
+        // If payment fails, revert the slot update and delete the booking
+        await supabase
+          .from('parking_slots')
+          .update({ is_occupied: false })
+          .eq('id', spotId);
+          
+        await supabase
+          .from('bookings')
+          .delete()
+          .eq('id', bookingData.id);
+          
+        throw new Error("Payment failed");
+      }
+      
+      // Schedule the booking to expire automatically
+      scheduleBookingExpiration(
+        bookingData.id,
+        spotId,
+        endTime.toISOString()
+      );
       
       return {
         success: true,

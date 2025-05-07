@@ -3,12 +3,14 @@ import React, { useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import PageContainer from '@/components/ui-components/PageContainer';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Clock, MapPin, Calendar } from 'lucide-react';
+import { CheckCircle, Clock, MapPin, Calendar, Share2, Download } from 'lucide-react';
 import QRCode from '@/components/ui-components/QRCode';
+import { useToast } from '@/hooks/use-toast';
 
 const BookingConfirmationPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   const bookingDetails = location.state;
   
@@ -23,8 +25,9 @@ const BookingConfirmationPage = () => {
     return null;
   }
   
-  const startTime = new Date();
-  const endTime = new Date(startTime.getTime() + (bookingDetails.duration * 60 * 60 * 1000));
+  const startTime = new Date(bookingDetails.startTime || new Date());
+  const endTime = new Date(bookingDetails.endTime || 
+    new Date(startTime.getTime() + (bookingDetails.duration * 60 * 60 * 1000)));
   
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -32,6 +35,23 @@ const BookingConfirmationPage = () => {
   
   const formatDate = (date: Date) => {
     return date.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
+  const handleShareBooking = () => {
+    // This is a mock function - in a real app, this would use the Web Share API
+    // or a fallback mechanism for older browsers
+    toast({
+      title: "Share Feature",
+      description: "In a production app, this would open the device's native share dialog",
+    });
+  };
+
+  const handleSaveQR = () => {
+    // This is a mock function - in a real app, this would download the QR code
+    toast({
+      title: "Download QR Code",
+      description: "In a production app, this would save the QR code to your device",
+    });
   };
   
   return (
@@ -49,8 +69,8 @@ const BookingConfirmationPage = () => {
         
         <div className="space-y-4">
           <div>
-            <p className="text-muted-foreground mb-1">Booking ID</p>
-            <p className="font-medium">{bookingDetails.bookingId}</p>
+            <p className="text-muted-foreground mb-1">Booking Code</p>
+            <p className="font-medium">{bookingDetails.bookingCode}</p>
           </div>
           
           <div>
@@ -63,7 +83,7 @@ const BookingConfirmationPage = () => {
             <p className="text-sm">Rue Didouche Mourad, Algiers</p>
           </div>
           
-          <div className="flex space-x-6">
+          <div className="flex flex-wrap gap-6">
             <div>
               <p className="text-muted-foreground mb-1">Spot</p>
               <p className="font-medium">{bookingDetails.spotLabel}</p>
@@ -78,17 +98,15 @@ const BookingConfirmationPage = () => {
             </div>
           </div>
           
-          <div className="flex space-x-6">
-            <div>
-              <div className="flex items-center mb-1">
-                <Calendar size={14} className="mr-1" />
-                <p className="text-muted-foreground text-sm">{formatDate(startTime)}</p>
-              </div>
-              <div className="flex items-center space-x-2">
-                <p className="font-medium">{formatTime(startTime)}</p>
-                <span className="text-muted-foreground">-</span>
-                <p className="font-medium">{formatTime(endTime)}</p>
-              </div>
+          <div className="flex flex-col">
+            <div className="flex items-center mb-1">
+              <Calendar size={14} className="mr-1" />
+              <p className="text-muted-foreground text-sm">{formatDate(startTime)}</p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <p className="font-medium">{formatTime(startTime)}</p>
+              <span className="text-muted-foreground">-</span>
+              <p className="font-medium">{formatTime(endTime)}</p>
             </div>
           </div>
         </div>
@@ -96,10 +114,32 @@ const BookingConfirmationPage = () => {
       
       <div className="bg-card rounded-lg border p-4 mb-6 text-center">
         <h2 className="font-semibold mb-4">Scan for Entry</h2>
-        <QRCode value={bookingDetails.bookingId} />
-        <p className="text-sm text-muted-foreground mt-2">
+        <QRCode value={bookingDetails.bookingCode || bookingDetails.bookingId} size={240} />
+        <p className="text-sm text-muted-foreground mt-2 mb-4">
           Show this QR code at the parking entrance
         </p>
+        
+        <div className="flex space-x-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex-1"
+            onClick={handleSaveQR}
+          >
+            <Download size={18} className="mr-1" />
+            Save QR
+          </Button>
+          
+          <Button 
+            variant="outline"
+            size="sm" 
+            className="flex-1"
+            onClick={handleShareBooking}
+          >
+            <Share2 size={18} className="mr-1" />
+            Share
+          </Button>
+        </div>
       </div>
       
       <div className="space-y-3">
