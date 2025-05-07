@@ -213,7 +213,11 @@ const RecentTransactions = () => {
           throw error;
         }
         
-        setTransactions(data || []);
+        // Fix the type error by ensuring the data conforms to the Transaction type
+        setTransactions((data || []).map(item => ({
+          ...item,
+          type: item.type as 'deposit' | 'withdrawal' // Cast to the correct type
+        })));
       } catch (error) {
         console.error('Error fetching transactions:', error);
       } finally {

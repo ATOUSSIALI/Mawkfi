@@ -22,7 +22,7 @@ const ParkingSpotGrid = ({ spots, onSpotSelect, selectedSpotId }: ParkingSpotGri
     
     switch (status) {
       case 'available':
-        return "bg-white border-primary text-primary hover:bg-primary hover:text-white";
+        return "bg-white border-primary text-primary hover:bg-primary/10";
       case 'occupied':
         return "bg-muted text-muted-foreground cursor-not-allowed";
       case 'disabled':
@@ -47,11 +47,19 @@ const ParkingSpotGrid = ({ spots, onSpotSelect, selectedSpotId }: ParkingSpotGri
             onClick={() => spot.status === 'available' && onSpotSelect(spot.id)}
             disabled={spot.status !== 'available' && spot.id !== selectedSpotId}
             className={cn(
-              "h-14 flex items-center justify-center rounded border-2 transition-colors",
+              "h-14 flex items-center justify-center rounded border-2 transition-colors relative",
               getSpotColor(spot.status, spot.id)
             )}
+            title={spot.status === 'occupied' ? "This spot is already occupied" : 
+                  spot.status === 'available' ? "Available spot" : ""}
           >
             {spot.label}
+            {spot.status === 'occupied' && (
+              <div className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full m-1"></div>
+            )}
+            {id === selectedSpotId && (
+              <div className="absolute bottom-1 left-0 right-0 text-xs font-medium">Selected</div>
+            )}
           </button>
         ))}
       </div>

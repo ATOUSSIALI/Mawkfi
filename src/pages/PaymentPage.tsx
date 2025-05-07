@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import PageContainer from '@/components/ui-components/PageContainer';
 import { Button } from '@/components/ui/button';
@@ -7,14 +7,21 @@ import { useToast } from '@/hooks/use-toast';
 import { CreditCard, Clock, CheckCircle } from 'lucide-react';
 import WalletCard from '@/components/payment/WalletCard';
 import { useWallet } from '@/contexts/WalletContext';
+import { useParkingBooking } from '@/hooks/use-parking-booking';
+import { supabase } from '@/integrations/supabase/client';
+import { checkAndExpireOverdueBookings } from '@/utils/bookingScheduler';
 
 const PaymentPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { balance, refreshBalance } = useWallet();
+  const { bookSpot, isProcessing } = useParkingBooking();
   
-  const [isProcessing, setIsProcessing] = useState(false);
+  // Check and expire overdue bookings when page loads
+  useEffect(() => {
+    checkAndExpireOverdueBookings();
+  }, []);
   
   // Get booking details from location state
   const bookingDetails = location.state || {
@@ -34,7 +41,7 @@ const PaymentPage = () => {
     refreshBalance();
   };
   
-  const handleMakePayment = () => {
+  const handleMakePayment = async () => {
     if (balance < bookingDetails.price) {
       toast({
         title: "Insufficient Funds",
@@ -44,26 +51,50 @@ const PaymentPage = () => {
       return;
     }
     
-    setIsProcessing(true);
-    
-    // Simulate payment processing
-    setTimeout(() => {
+    // Get current user ID
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       toast({
-        title: "Payment Successful",
-        description: `You have successfully booked spot ${bookingDetails.spotLabel} for ${bookingDetails.duration} hour(s).`,
+        title: "Authentication Required",
+        description: "Please log in to book a parking spot.",
+        variant: "destructive"
+      });
+      navigate('/login');
+      return;
+    }
+    
+    try {
+      const bookingResult = await bookSpot({
+        userId: user.id,
+        parkingLotId: bookingDetails.parkingLotId,
+        parkingLotName: bookingDetails.parkingLotName,
+        spotId: bookingDetails.spotId,
+        spotLabel: bookingDetails.spotLabel,
+        duration: bookingDetails.duration,
+        price: bookingDetails.price
       });
       
-      setIsProcessing(false);
+      if (!bookingResult.success) {
+        throw new Error(bookingResult.error?.message || "Failed to create booking");
+      }
       
-      // Navigate to confirmation page with booking details and a generated booking ID
+      // Navigate to confirmation page with booking details
       navigate('/booking/confirmation', {
         state: {
           ...bookingDetails,
-          bookingId: 'BKG' + Math.floor(100000 + Math.random() * 900000),
-          timestamp: new Date().toISOString(),
+          bookingId: bookingResult.bookingId,
+          bookingCode: bookingResult.bookingCode,
+          startTime: bookingResult.startTime,
+          endTime: bookingResult.endTime,
         }
       });
-    }, 1500);
+    } catch (error: any) {
+      toast({
+        title: "Booking Error",
+        description: error.message || "Failed to book parking spot.",
+        variant: "destructive"
+      });
+    }
   };
   
   return (
