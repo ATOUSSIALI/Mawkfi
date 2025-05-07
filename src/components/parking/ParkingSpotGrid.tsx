@@ -2,7 +2,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 
-export type SpotStatus = 'available' | 'occupied' | 'selected' | 'disabled';
+export type SpotStatus = 'available' | 'occupied' | 'selected' | 'reserved';
 
 interface ParkingSpot {
   id: string;
@@ -12,72 +12,52 @@ interface ParkingSpot {
 
 interface ParkingSpotGridProps {
   spots: ParkingSpot[];
-  onSpotSelect: (spotId: string) => void;
+  onSpotSelect?: (spotId: string) => void;
   selectedSpotId?: string;
+  className?: string;
 }
 
-const ParkingSpotGrid = ({ spots, onSpotSelect, selectedSpotId }: ParkingSpotGridProps) => {
-  const getSpotColor = (status: SpotStatus, id: string): string => {
-    if (id === selectedSpotId) return "bg-primary text-white border-primary";
+const ParkingSpotGrid = ({
+  spots,
+  onSpotSelect,
+  selectedSpotId,
+  className
+}: ParkingSpotGridProps) => {
+  const getSpotStyles = (status: SpotStatus, isSelected: boolean): string => {
+    const baseStyles = "flex items-center justify-center rounded-lg p-3 text-center transition-colors";
+    
+    if (isSelected) {
+      return cn(baseStyles, "bg-primary text-white border-2 border-primary");
+    }
     
     switch (status) {
       case 'available':
-        return "bg-white border-primary text-primary hover:bg-primary/10";
+        return cn(baseStyles, "bg-white border border-primary/30 text-primary hover:bg-primary/10 cursor-pointer");
       case 'occupied':
-        return "bg-muted text-muted-foreground cursor-not-allowed";
-      case 'disabled':
-        return "bg-secondary text-secondary-foreground cursor-not-allowed";
+        return cn(baseStyles, "bg-muted text-muted-foreground border border-muted-foreground/20 cursor-not-allowed");
+      case 'reserved':
+        return cn(baseStyles, "bg-amber-100 text-amber-700 border border-amber-300 cursor-not-allowed");
       default:
-        return "bg-white";
+        return baseStyles;
     }
   };
 
   return (
-    <div className="w-full">
-      <div className="flex justify-center mb-6">
-        <div className="bg-secondary w-3/4 h-8 rounded-md flex items-center justify-center text-sm font-medium">
-          Entrance
+    <div className={cn("grid grid-cols-3 sm:grid-cols-4 gap-3", className)}>
+      {spots.map((spot) => (
+        <div
+          key={spot.id}
+          className={getSpotStyles(spot.status, spot.id === selectedSpotId)}
+          onClick={() => {
+            if (spot.status === 'available' && onSpotSelect) {
+              onSpotSelect(spot.id);
+            }
+          }}
+          aria-disabled={spot.status !== 'available'}
+        >
+          {spot.label}
         </div>
-      </div>
-      
-      <div className="grid grid-cols-4 gap-3">
-        {spots.map((spot) => (
-          <button
-            key={spot.id}
-            onClick={() => spot.status === 'available' && onSpotSelect(spot.id)}
-            disabled={spot.status !== 'available' && spot.id !== selectedSpotId}
-            className={cn(
-              "h-14 flex items-center justify-center rounded border-2 transition-colors relative",
-              getSpotColor(spot.status, spot.id)
-            )}
-            title={spot.status === 'occupied' ? "This spot is already occupied" : 
-                  spot.status === 'available' ? "Available spot" : ""}
-          >
-            {spot.label}
-            {spot.status === 'occupied' && (
-              <div className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full m-1"></div>
-            )}
-            {id === selectedSpotId && (
-              <div className="absolute bottom-1 left-0 right-0 text-xs font-medium">Selected</div>
-            )}
-          </button>
-        ))}
-      </div>
-      
-      <div className="mt-6 flex justify-center space-x-4">
-        <div className="flex items-center">
-          <div className="w-4 h-4 rounded bg-white border-2 border-primary mr-2"></div>
-          <span className="text-xs">Available</span>
-        </div>
-        <div className="flex items-center">
-          <div className="w-4 h-4 rounded bg-primary mr-2"></div>
-          <span className="text-xs">Selected</span>
-        </div>
-        <div className="flex items-center">
-          <div className="w-4 h-4 rounded bg-muted mr-2"></div>
-          <span className="text-xs">Occupied</span>
-        </div>
-      </div>
+      ))}
     </div>
   );
 };
