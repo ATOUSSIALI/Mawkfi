@@ -18,7 +18,7 @@ const WalletBalanceAlert = ({ currentBalance, requiredAmount }: WalletBalanceAle
   const shortfall = requiredAmount - currentBalance;
   
   return (
-    <Alert variant="warning" className="mt-4 bg-amber-50 border-amber-200">
+    <Alert className="mt-4 bg-amber-50 border-amber-200">
       <Wallet className="h-4 w-4 text-amber-500" />
       <AlertTitle className="text-amber-700">Insufficient Balance</AlertTitle>
       <AlertDescription className="text-amber-600">

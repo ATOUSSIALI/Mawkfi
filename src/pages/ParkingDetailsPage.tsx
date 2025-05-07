@@ -16,6 +16,7 @@ import { useParkingBooking } from '@/hooks/use-parking-booking';
 import { checkAndExpireOverdueBookings } from '@/utils/bookingScheduler';
 import { useWallet } from '@/contexts/WalletContext';
 import WalletBalanceDisplay from '@/components/payment/WalletBalanceDisplay';
+import WalletBalanceAlert from '@/components/parking/WalletBalanceAlert';
 import { RefreshCw } from 'lucide-react';
 
 interface ParkingLocation {
@@ -75,7 +76,7 @@ const ParkingDetailsPage = () => {
         description: data.description || "Located in a convenient area with easy access and secure facilities.",
         available_spots: data.available_spots,
         total_spots: data.total_spots
-      };
+      } as ParkingLocation;
     },
     enabled: !!id
   });
@@ -252,9 +253,10 @@ const ParkingDetailsPage = () => {
           />
           
           {!hasSufficientFunds && (
-            <div className="text-destructive text-sm text-center">
-              Insufficient wallet balance. You need {calculateTotalPrice} DZD for this booking.
-            </div>
+            <WalletBalanceAlert
+              currentBalance={balance}
+              requiredAmount={calculateTotalPrice}
+            />
           )}
         </div>
       )}
