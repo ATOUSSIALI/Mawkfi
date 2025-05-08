@@ -1,40 +1,19 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PageContainer from '@/components/ui-components/PageContainer';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { SpotStatus } from '@/components/parking/ParkingSpotGrid';
+import { useParkingBooking } from '@/hooks/use-parking-booking';
+import { useWallet } from '@/contexts/WalletContext';
+import { useParkingDetails } from '@/hooks/use-parking-details';
+import { useSpotVerifier } from '@/components/parking/SpotVerifier';
 import ParkingHeader from '@/components/parking/ParkingHeader';
 import ParkingInfo from '@/components/parking/ParkingInfo';
 import ParkingSpotSelection from '@/components/parking/ParkingSpotSelection';
-import DurationSelector from '@/components/parking/DurationSelector';
-import PaymentSummary from '@/components/parking/PaymentSummary';
-import { useQuery } from '@tanstack/react-query';
-import { useParkingBooking } from '@/hooks/use-parking-booking';
-import { checkAndExpireOverdueBookings } from '@/utils/bookingScheduler';
-import { useWallet } from '@/contexts/WalletContext';
-import WalletBalanceDisplay from '@/components/payment/WalletBalanceDisplay';
-import WalletBalanceAlert from '@/components/parking/WalletBalanceAlert';
-import { RefreshCw } from 'lucide-react';
-
-interface ParkingLocation {
-  id: string;
-  name: string;
-  address: string;
-  hourly_price: number;
-  image_url: string | null;
-  description?: string;
-  available_spots: number;
-  total_spots: number;
-}
-
-interface ParkingSpot {
-  id: string;
-  label: string;
-  status: SpotStatus;
-}
+import ParkingDetailsHeader from '@/components/parking/ParkingDetailsHeader';
+import ParkingBookingForm from '@/components/parking/ParkingBookingForm';
 
 const ParkingDetailsPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -46,99 +25,22 @@ const ParkingDetailsPage = () => {
   const [selectedSpotId, setSelectedSpotId] = useState<string | null>(null);
   const [duration, setDuration] = useState(1); // Default 1 hour
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isVerifyingSpot, setIsVerifyingSpot] = useState(false);
 
-  // Check and expire overdue bookings when page loads
-  useEffect(() => {
-    checkAndExpireOverdueBookings();
-  }, []);
+  const {
+    parkingLot,
+    spots,
+    isLoading,
+    refreshData
+  } = useParkingDetails(id);
 
-  const { 
-    data: parkingLot, 
-    isLoading: isLoadingParking,
-    refetch: refetchParkingLot
-  } = useQuery({
-    queryKey: ['parkingLocation', id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('parking_locations')
-        .select('*')
-        .eq('id', id)
-        .single();
-        
-      if (error) throw error;
-      
-      return {
-        id: data.id,
-        name: data.name,
-        address: data.address,
-        hourly_price: Number(data.hourly_price),
-        image_url: data.image_url,
-        description: data.description || "Located in a convenient area with easy access and secure facilities.",
-        available_spots: data.available_spots,
-        total_spots: data.total_spots
-      } as ParkingLocation;
-    },
-    enabled: !!id
+  const { verifySpotAvailability, isVerifying } = useSpotVerifier({
+    onSpotUnavailable: () => setSelectedSpotId(null),
+    refetchSpots: async () => refreshData()
   });
-
-  const { 
-    data: spots = [], 
-    isLoading: isLoadingSpots,
-    refetch: refetchSpots
-  } = useQuery({
-    queryKey: ['parkingSpots', id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('parking_slots')
-        .select('*')
-        .eq('parking_location_id', id);
-        
-      if (error) throw error;
-      
-      return data.map(slot => ({
-        id: slot.id,
-        label: slot.slot_label,
-        status: slot.is_occupied ? 'occupied' as SpotStatus : 'available' as SpotStatus
-      }));
-    },
-    enabled: !!id
-  });
-  
-  // Set up realtime subscription for parking spots changes
-  useEffect(() => {
-    if (!id) return;
-    
-    const channel = supabase
-      .channel('parking-details-changes')
-      .on('postgres_changes', { 
-        event: 'UPDATE', 
-        schema: 'public', 
-        table: 'parking_slots',
-        filter: `parking_location_id=eq.${id}`
-      }, () => {
-        // When a slot changes, refresh the spots data
-        refetchSpots();
-      })
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'parking_locations',
-        filter: `id=eq.${id}`
-      }, () => {
-        // When the parking location updates (e.g. available_spots changes), refresh it
-        refetchParkingLot();
-      })
-      .subscribe();
-      
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [id, refetchSpots, refetchParkingLot]);
   
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await Promise.all([refetchParkingLot(), refetchSpots()]);
+    await refreshData();
     setIsRefreshing(false);
     
     // Clear selected spot if it's no longer available
@@ -155,49 +57,8 @@ const ParkingDetailsPage = () => {
     }
   };
   
-  const isLoading = isLoadingParking || isLoadingSpots;
-  
   const handleSpotSelect = (spotId: string) => {
     setSelectedSpotId(spotId === selectedSpotId ? null : spotId);
-  };
-  
-  const verifySpotAvailability = async (): Promise<boolean> => {
-    if (!selectedSpotId) return false;
-    
-    setIsVerifyingSpot(true);
-    try {
-      const { data, error } = await supabase
-        .from('parking_slots')
-        .select('is_occupied, slot_label')
-        .eq('id', selectedSpotId)
-        .single();
-        
-      if (error) throw error;
-      
-      if (data.is_occupied) {
-        toast({
-          title: "Spot Unavailable",
-          description: `The spot ${data.slot_label} has just been taken. Please select another spot.`,
-          variant: "destructive"
-        });
-        // Refresh spots to show updated status
-        refetchSpots();
-        setSelectedSpotId(null);
-        return false;
-      }
-      
-      return true;
-    } catch (error) {
-      console.error('Error verifying spot availability:', error);
-      toast({
-        title: "Verification Error",
-        description: "Could not verify spot availability. Please try again.",
-        variant: "destructive"
-      });
-      return false;
-    } finally {
-      setIsVerifyingSpot(false);
-    }
   };
   
   const handleProceedToPayment = async () => {
@@ -216,10 +77,14 @@ const ParkingDetailsPage = () => {
     }
     
     // Verify spot is still available
-    const isAvailable = await verifySpotAvailability();
+    const selectedSpot = spots.find(spot => spot.id === selectedSpotId);
+    if (!selectedSpot) return;
+    
+    const isAvailable = await verifySpotAvailability(selectedSpotId, selectedSpot.label);
     if (!isAvailable) return;
     
     // Check wallet balance
+    const calculateTotalPrice = parkingLot.hourly_price * duration;
     if (balance < calculateTotalPrice) {
       toast({
         title: "Insufficient Balance",
@@ -229,9 +94,6 @@ const ParkingDetailsPage = () => {
       return;
     }
 
-    const selectedSpot = spots.find(spot => spot.id === selectedSpotId);
-    if (!selectedSpot) return;
-    
     navigate('/payment', { 
       state: { 
         parkingLotId: parkingLot.id,
@@ -243,9 +105,6 @@ const ParkingDetailsPage = () => {
       } 
     });
   };
-  
-  const calculateTotalPrice = parkingLot ? parkingLot.hourly_price * duration : 0;
-  const hasSufficientFunds = balance >= calculateTotalPrice;
   
   if (isLoading) {
     return (
@@ -270,6 +129,10 @@ const ParkingDetailsPage = () => {
     );
   }
   
+  const selectedSpot = selectedSpotId 
+    ? spots.find(s => s.id === selectedSpotId)
+    : undefined;
+  
   return (
     <PageContainer className="pb-20">
       <ParkingHeader 
@@ -279,19 +142,10 @@ const ParkingDetailsPage = () => {
         imageUrl={parkingLot.image_url}
       />
       
-      <div className="flex justify-between items-center mb-2">
-        <WalletBalanceDisplay variant="compact" />
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={handleRefresh} 
-          disabled={isRefreshing}
-          className="flex items-center gap-1"
-        >
-          <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
-          {isRefreshing ? "Refreshing..." : "Refresh"}
-        </Button>
-      </div>
+      <ParkingDetailsHeader
+        onRefresh={handleRefresh}
+        isRefreshing={isRefreshing}
+      />
       
       <ParkingInfo 
         hourlyPrice={parkingLot.hourly_price}
@@ -307,27 +161,16 @@ const ParkingDetailsPage = () => {
       />
       
       {selectedSpotId && (
-        <div className="mt-6 space-y-4">
-          <DurationSelector 
-            duration={duration} 
-            setDuration={setDuration} 
-          />
-          
-          <PaymentSummary
-            spotLabel={spots.find(s => s.id === selectedSpotId)?.label}
-            duration={duration}
-            hourlyPrice={parkingLot.hourly_price}
-            onProceedToPayment={handleProceedToPayment}
-            isProcessing={isVerifyingSpot || isProcessing}
-          />
-          
-          {!hasSufficientFunds && (
-            <WalletBalanceAlert
-              currentBalance={balance}
-              requiredAmount={calculateTotalPrice}
-            />
-          )}
-        </div>
+        <ParkingBookingForm
+          selectedSpot={selectedSpot}
+          spots={spots}
+          duration={duration}
+          setDuration={setDuration}
+          hourlyPrice={parkingLot.hourly_price}
+          walletBalance={balance}
+          onProceedToPayment={handleProceedToPayment}
+          isProcessing={isVerifying || isProcessing}
+        />
       )}
     </PageContainer>
   );
