@@ -10,7 +10,7 @@ export interface ParkingLocation {
   address: string;
   hourly_price: number;
   image_url: string | null;
-  description?: string;
+  description?: string | null; // Made description optional and potentially null
   available_spots: number;
   total_spots: number;
 }

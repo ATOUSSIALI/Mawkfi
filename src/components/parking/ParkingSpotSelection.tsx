@@ -4,6 +4,8 @@ import ParkingSpotGrid, { SpotStatus } from '@/components/parking/ParkingSpotGri
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CircleCheck } from 'lucide-react';
+import SpotBookingHistory from '@/components/parking/SpotBookingHistory';
+import { useSpotBookingHistory } from '@/hooks/use-spot-booking-history';
 
 interface ParkingSpot {
   id: string;
@@ -24,6 +26,9 @@ const ParkingSpotSelection = ({
   onSpotSelect,
   isLoading
 }: ParkingSpotSelectionProps) => {
+  const selectedSpot = spots.find(spot => spot.id === selectedSpotId);
+  const { bookingHistory, isLoading: isHistoryLoading } = useSpotBookingHistory(selectedSpotId);
+  
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -69,6 +74,16 @@ const ParkingSpotSelection = ({
             onSpotSelect={onSpotSelect}
             selectedSpotId={selectedSpotId || undefined}
           />
+          
+          {/* Show spot booking history for selected spot */}
+          {selectedSpotId && selectedSpot && (
+            <SpotBookingHistory 
+              spotId={selectedSpotId}
+              spotLabel={selectedSpot.label}
+              bookingHistory={bookingHistory}
+              isLoading={isHistoryLoading}
+            />
+          )}
         </>
       ) : (
         <div className="text-center py-6 bg-muted/20 rounded-lg border border-dashed">
