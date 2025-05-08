@@ -46,32 +46,34 @@ const ParkingSpotSelection = ({
     );
   }
   
-  const availableCount = spots.filter(spot => spot.status === 'available').length;
+  const availableSpots = spots.filter(spot => spot.status === 'available');
+  const availableCount = availableSpots.length;
   const occupiedCount = spots.filter(spot => spot.status === 'occupied').length;
+  const hasAvailableSpots = availableCount > 0;
   
   return (
     <div className="mt-6">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold">Select a Parking Spot</h2>
         <div className="flex space-x-2">
-          <Badge variant="outline" className="bg-white border-primary text-primary">
-            {availableCount} Available
-          </Badge>
+          {hasAvailableSpots && (
+            <Badge variant="outline" className="bg-white border-primary text-primary">
+              {availableCount} Available
+            </Badge>
+          )}
           <Badge variant="outline" className="bg-muted text-muted-foreground">
             {occupiedCount} Occupied
           </Badge>
         </div>
       </div>
       
-      {spots.length === 0 && (
+      {spots.length === 0 || !hasAvailableSpots ? (
         <Alert className="mb-4">
           <AlertDescription>
             No parking spots are available for this location. Please try another parking location.
           </AlertDescription>
         </Alert>
-      )}
-      
-      {spots.length > 0 && (
+      ) : (
         <>
           <div className="bg-sky-50 border border-sky-100 rounded-md p-3 mb-4 text-sm text-sky-700 flex items-start">
             <CircleCheck className="h-5 w-5 text-sky-500 mr-2 mt-0.5 flex-shrink-0" />
@@ -102,7 +104,7 @@ const ParkingSpotSelection = ({
         </div>
       )}
       
-      {!selectedSpotId && spots.length > 0 && (
+      {!selectedSpotId && hasAvailableSpots && (
         <div className="mt-3 py-2 text-sm text-center text-amber-700 bg-amber-50 rounded-md">
           <p>Please select an available spot to continue</p>
         </div>
