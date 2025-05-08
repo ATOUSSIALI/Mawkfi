@@ -3,6 +3,7 @@ import React from 'react';
 import ParkingSpotGrid, { SpotStatus } from '@/components/parking/ParkingSpotGrid';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CircleCheck } from 'lucide-react';
 
 interface ParkingSpot {
   id: string;
@@ -43,9 +44,9 @@ const ParkingSpotSelection = ({
   const occupiedCount = spots.filter(spot => spot.status === 'occupied').length;
   
   return (
-    <div>
+    <div className="mt-6">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="font-semibold">Select a Parking Spot</h2>
+        <h2 className="text-lg font-semibold">Select a Parking Spot</h2>
         <div className="flex space-x-2">
           <Badge variant="outline" className="bg-white border-primary text-primary">
             {availableCount} Available
@@ -57,11 +58,18 @@ const ParkingSpotSelection = ({
       </div>
       
       {spots.length > 0 ? (
-        <ParkingSpotGrid 
-          spots={spots} 
-          onSpotSelect={onSpotSelect}
-          selectedSpotId={selectedSpotId || undefined}
-        />
+        <>
+          <div className="bg-sky-50 border border-sky-100 rounded-md p-3 mb-4 text-sm text-sky-700 flex items-start">
+            <CircleCheck className="h-5 w-5 text-sky-500 mr-2 mt-0.5 flex-shrink-0" />
+            <p>Tap on an available spot to select it for booking. Selected spots will be highlighted.</p>
+          </div>
+          
+          <ParkingSpotGrid 
+            spots={spots} 
+            onSpotSelect={onSpotSelect}
+            selectedSpotId={selectedSpotId || undefined}
+          />
+        </>
       ) : (
         <div className="text-center py-6 bg-muted/20 rounded-lg border border-dashed">
           <p className="text-muted-foreground">No parking spots available</p>
@@ -69,8 +77,14 @@ const ParkingSpotSelection = ({
       )}
       
       {selectedSpotId && (
-        <div className="mt-3 text-sm text-center text-muted-foreground">
-          <p>Selected spot: {spots.find(s => s.id === selectedSpotId)?.label}</p>
+        <div className="mt-3 py-2 text-sm font-medium text-center text-green-700 bg-green-50 rounded-md">
+          <p>Selected spot: <span className="font-bold">{spots.find(s => s.id === selectedSpotId)?.label}</span></p>
+        </div>
+      )}
+      
+      {!selectedSpotId && spots.length > 0 && (
+        <div className="mt-3 py-2 text-sm text-center text-amber-700 bg-amber-50 rounded-md">
+          <p>Please select an available spot to continue</p>
         </div>
       )}
     </div>
