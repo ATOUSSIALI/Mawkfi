@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { CircleCheck } from 'lucide-react';
 import SpotBookingHistory from '@/components/parking/SpotBookingHistory';
 import { useSpotBookingHistory } from '@/hooks/use-spot-booking-history';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface ParkingSpot {
   id: string;
@@ -62,7 +63,15 @@ const ParkingSpotSelection = ({
         </div>
       </div>
       
-      {spots.length > 0 ? (
+      {spots.length === 0 && (
+        <Alert className="mb-4">
+          <AlertDescription>
+            No parking spots are available for this location. Please try another parking location.
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {spots.length > 0 && (
         <>
           <div className="bg-sky-50 border border-sky-100 rounded-md p-3 mb-4 text-sm text-sky-700 flex items-start">
             <CircleCheck className="h-5 w-5 text-sky-500 mr-2 mt-0.5 flex-shrink-0" />
@@ -85,10 +94,6 @@ const ParkingSpotSelection = ({
             />
           )}
         </>
-      ) : (
-        <div className="text-center py-6 bg-muted/20 rounded-lg border border-dashed">
-          <p className="text-muted-foreground">No parking spots available</p>
-        </div>
       )}
       
       {selectedSpotId && (
