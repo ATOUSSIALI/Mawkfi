@@ -26,14 +26,17 @@ export const scheduleBookingExpiration = async (bookingId: string, spotId: strin
           return;
         }
         
-        // Mark the booking as inactive
+        // Mark the booking as completed (no longer active)
         const { error: updateBookingError } = await supabase
           .from('bookings')
-          .update({ is_active: false })
+          .update({ 
+            is_active: false,
+            status: 'completed'
+          })
           .eq('id', bookingId);
           
         if (updateBookingError) {
-          console.error('Error marking booking as inactive:', updateBookingError);
+          console.error('Error marking booking as completed:', updateBookingError);
           return;
         }
         
@@ -52,7 +55,7 @@ export const scheduleBookingExpiration = async (bookingId: string, spotId: strin
           return;
         }
         
-        console.log(`Booking ${bookingId} expired and slot ${spotId} freed`);
+        console.log(`Booking ${bookingId} completed and slot ${spotId} freed`);
       } catch (error) {
         console.error('Error processing booking expiration:', error);
       }
@@ -70,7 +73,7 @@ export const checkAndExpireOverdueBookings = async () => {
     // Get all active bookings that have ended
     const { data: overdueBookings, error } = await supabase
       .from('bookings')
-      .select('id, parking_slot_id, end_time')
+      .select('id, parking_slot_id, end_time, status')
       .eq('is_active', true)
       .lt('end_time', now);
       
@@ -94,14 +97,17 @@ export const checkAndExpireOverdueBookings = async () => {
       console.log(`Found ${overdueBookings.length} overdue bookings to expire`);
       
       for (const booking of overdueBookings) {
-        // Mark the booking as inactive
+        // Mark the booking as inactive and completed
         const { error: updateBookingError } = await supabase
           .from('bookings')
-          .update({ is_active: false })
+          .update({ 
+            is_active: false,
+            status: 'completed'
+          })
           .eq('id', booking.id);
           
         if (updateBookingError) {
-          console.error(`Error marking booking ${booking.id} as inactive:`, updateBookingError);
+          console.error(`Error marking booking ${booking.id} as completed:`, updateBookingError);
           continue;
         }
         

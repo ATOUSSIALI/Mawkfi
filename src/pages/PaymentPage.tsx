@@ -4,14 +4,13 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import PageContainer from '@/components/ui-components/PageContainer';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { CreditCard, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
+import { CreditCard, Clock, AlertTriangle } from 'lucide-react';
 import WalletCard from '@/components/payment/WalletCard';
 import { useWallet } from '@/contexts/WalletContext';
 import { useParkingBooking } from '@/hooks/use-parking-booking';
 import { supabase } from '@/integrations/supabase/client';
 import { checkAndExpireOverdueBookings } from '@/utils/bookingScheduler';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import WalletBalanceDisplay from '@/components/payment/WalletBalanceDisplay';
 
 const PaymentPage = () => {
   const location = useLocation();
@@ -162,6 +161,7 @@ const PaymentPage = () => {
           bookingCode: bookingResult.bookingCode,
           startTime: bookingResult.startTime,
           endTime: bookingResult.endTime,
+          status: 'upcoming'
         }
       });
     } catch (error: any) {

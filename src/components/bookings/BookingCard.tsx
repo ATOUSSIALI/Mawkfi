@@ -1,8 +1,10 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, MapPin } from 'lucide-react';
+import { Calendar, Clock, MapPin, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useParkingBooking } from '@/hooks/use-parking-booking';
+import { useToast } from '@/hooks/use-toast';
 
 export interface BookingDetails {
   id: string;
@@ -13,24 +15,70 @@ export interface BookingDetails {
   endTime: string;
   duration: number; // in hours
   price: number; // total price in DZD
-  status: 'active' | 'completed' | 'cancelled';
+  status: 'upcoming' | 'completed' | 'cancelled';
+  parkingSlotId?: string;
 }
 
 interface BookingCardProps {
   booking: BookingDetails;
+  onStatusChange?: () => void;
 }
 
-const BookingCard = ({ booking }: BookingCardProps) => {
+const BookingCard = ({ booking, onStatusChange }: BookingCardProps) => {
+  const { cancelBooking, isProcessing } = useParkingBooking();
+  const { toast } = useToast();
+  
   const statusColors = {
-    active: 'bg-primary',
+    upcoming: 'bg-primary',
     completed: 'bg-muted',
     cancelled: 'bg-destructive',
   };
   
   const statusText = {
-    active: 'Active',
+    upcoming: 'Active',
     completed: 'Completed',
     cancelled: 'Cancelled',
+  };
+
+  // Check if the booking is cancellable (only upcoming bookings)
+  const isCancellable = booking.status === 'upcoming';
+  
+  // Format dates for display
+  const formatDateTime = (dateTimeStr: string) => {
+    const date = new Date(dateTimeStr);
+    return {
+      date: date.toLocaleDateString(),
+      time: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+  };
+  
+  const startDateTime = formatDateTime(booking.startTime);
+  const endDateTime = formatDateTime(booking.endTime);
+  
+  // Handle booking cancellation
+  const handleCancelBooking = async () => {
+    if (!booking.parkingSlotId) {
+      toast({
+        title: "Cancellation Error",
+        description: "Could not find parking spot information",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const result = await cancelBooking(booking.id, booking.parkingSlotId);
+    
+    if (result.success) {
+      toast({
+        title: "Booking Cancelled",
+        description: "Your booking has been successfully cancelled",
+      });
+      
+      // Trigger refetch of bookings if callback provided
+      if (onStatusChange) {
+        onStatusChange();
+      }
+    }
   };
 
   return (
@@ -54,12 +102,12 @@ const BookingCard = ({ booking }: BookingCardProps) => {
         <div className="flex mt-3 justify-between">
           <div className="flex items-center text-sm">
             <Calendar size={14} className="mr-1" />
-            <span>{booking.startTime.split(' ')[0]}</span>
+            <span>{startDateTime.date}</span>
           </div>
           <div className="flex items-center text-sm">
             <Clock size={14} className="mr-1" />
             <span>
-              {booking.startTime.split(' ')[1]} - {booking.endTime.split(' ')[1]}
+              {startDateTime.time} - {endDateTime.time}
             </span>
           </div>
         </div>
@@ -70,11 +118,24 @@ const BookingCard = ({ booking }: BookingCardProps) => {
             <p className="text-lg font-bold text-primary">{booking.price} DZD</p>
           </div>
           
-          {booking.status === 'active' && (
-            <Link to={`/booking/${booking.id}`}>
-              <Button variant="outline" size="sm">View QR Code</Button>
-            </Link>
-          )}
+          <div className="space-x-2">
+            {isCancellable && (
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                onClick={handleCancelBooking}
+                disabled={isProcessing}
+              >
+                {isProcessing ? 'Cancelling...' : 'Cancel'}
+              </Button>
+            )}
+            
+            {booking.status === 'upcoming' && (
+              <Link to={`/booking/${booking.id}`}>
+                <Button variant="outline" size="sm">View Details</Button>
+              </Link>
+            )}
+          </div>
         </div>
       </div>
     </div>

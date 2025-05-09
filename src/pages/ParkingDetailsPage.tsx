@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PageContainer from '@/components/ui-components/PageContainer';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import ParkingInfo from '@/components/parking/ParkingInfo';
 import ParkingSpotSelection from '@/components/parking/ParkingSpotSelection';
 import ParkingDetailsHeader from '@/components/parking/ParkingDetailsHeader';
 import ParkingBookingForm from '@/components/parking/ParkingBookingForm';
+import { checkAndExpireOverdueBookings } from '@/utils/bookingScheduler';
 
 const ParkingDetailsPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -25,6 +26,11 @@ const ParkingDetailsPage = () => {
   const [selectedSpotId, setSelectedSpotId] = useState<string | null>(null);
   const [duration, setDuration] = useState(1); // Default 1 hour
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Check and expire overdue bookings when the page loads
+  useEffect(() => {
+    checkAndExpireOverdueBookings();
+  }, []);
 
   const {
     parkingLot,

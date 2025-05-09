@@ -68,7 +68,8 @@ export function useParkingBooking() {
           duration_hours: duration,
           total_price: price,
           booking_code: bookingCode,
-          is_active: true
+          is_active: true,
+          status: 'upcoming'
         })
         .select('id')
         .single();
@@ -150,10 +151,13 @@ export function useParkingBooking() {
     setIsProcessing(true);
     
     try {
-      // Update the booking to mark it as inactive
+      // Update the booking to mark it as inactive and cancelled
       const { error: bookingError } = await supabase
         .from('bookings')
-        .update({ is_active: false })
+        .update({ 
+          is_active: false,
+          status: 'cancelled'
+        })
         .eq('id', bookingId);
         
       if (bookingError) {
@@ -173,6 +177,8 @@ export function useParkingBooking() {
       if (slotError) {
         throw slotError;
       }
+      
+      // Could add code here to refund the user if cancellation policy allows
       
       return { success: true };
     } catch (error: any) {

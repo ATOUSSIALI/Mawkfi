@@ -111,6 +111,8 @@ export type Database = {
           id: string
           is_occupied: boolean
           parking_location_id: string
+          reserved_by: string | null
+          reserved_until: string | null
           slot_label: string
           updated_at: string
         }
@@ -119,6 +121,8 @@ export type Database = {
           id?: string
           is_occupied?: boolean
           parking_location_id: string
+          reserved_by?: string | null
+          reserved_until?: string | null
           slot_label: string
           updated_at?: string
         }
@@ -127,6 +131,8 @@ export type Database = {
           id?: string
           is_occupied?: boolean
           parking_location_id?: string
+          reserved_by?: string | null
+          reserved_until?: string | null
           slot_label?: string
           updated_at?: string
         }
