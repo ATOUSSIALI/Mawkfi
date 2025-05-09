@@ -19,6 +19,8 @@ export interface ParkingSpot {
   id: string;
   label: string;
   status: 'available' | 'occupied' | 'selected' | 'reserved';
+  reserved_until?: string | null;
+  reserved_by?: string | null;
 }
 
 export function useParkingDetails(parkingId: string | undefined) {
@@ -74,11 +76,13 @@ export function useParkingDetails(parkingId: string | undefined) {
         
       if (error) throw error;
       
-      // Correctly map is_occupied to status
+      // Map database fields to our ParkingSpot interface
       return data.map(slot => ({
         id: slot.id,
         label: slot.slot_label,
-        status: slot.is_occupied ? 'occupied' as const : 'available' as const
+        status: slot.is_occupied ? 'occupied' as const : 'available' as const,
+        reserved_until: slot.reserved_until || null,
+        reserved_by: slot.reserved_by || null
       }));
     },
     enabled: !!parkingId

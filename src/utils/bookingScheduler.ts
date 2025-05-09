@@ -37,10 +37,14 @@ export const scheduleBookingExpiration = async (bookingId: string, spotId: strin
           return;
         }
         
-        // Mark the parking slot as unoccupied
+        // Mark the parking slot as unoccupied and clear reservation data
         const { error: updateSlotError } = await supabase
           .from('parking_slots')
-          .update({ is_occupied: false })
+          .update({ 
+            is_occupied: false,
+            reserved_until: null,
+            reserved_by: null
+          })
           .eq('id', spotId);
           
         if (updateSlotError) {
@@ -74,37 +78,74 @@ export const checkAndExpireOverdueBookings = async () => {
       throw error;
     }
     
-    if (!overdueBookings || overdueBookings.length === 0) {
-      return;
+    // Also check for expired parking slots based on reserved_until
+    const { data: expiredSlots, error: slotsError } = await supabase
+      .from('parking_slots')
+      .select('id')
+      .eq('is_occupied', true)
+      .lt('reserved_until', now);
+    
+    if (slotsError) {
+      throw slotsError;
     }
     
-    console.log(`Found ${overdueBookings.length} overdue bookings to expire`);
-    
     // Process each overdue booking
-    for (const booking of overdueBookings) {
-      // Mark the booking as inactive
-      const { error: updateBookingError } = await supabase
-        .from('bookings')
-        .update({ is_active: false })
-        .eq('id', booking.id);
-        
-      if (updateBookingError) {
-        console.error(`Error marking booking ${booking.id} as inactive:`, updateBookingError);
-        continue;
-      }
+    if (overdueBookings && overdueBookings.length > 0) {
+      console.log(`Found ${overdueBookings.length} overdue bookings to expire`);
       
-      // Mark the parking slot as unoccupied
-      const { error: updateSlotError } = await supabase
-        .from('parking_slots')
-        .update({ is_occupied: false })
-        .eq('id', booking.parking_slot_id);
+      for (const booking of overdueBookings) {
+        // Mark the booking as inactive
+        const { error: updateBookingError } = await supabase
+          .from('bookings')
+          .update({ is_active: false })
+          .eq('id', booking.id);
+          
+        if (updateBookingError) {
+          console.error(`Error marking booking ${booking.id} as inactive:`, updateBookingError);
+          continue;
+        }
         
-      if (updateSlotError) {
-        console.error(`Error marking slot ${booking.parking_slot_id} as unoccupied:`, updateSlotError);
-        continue;
+        // Mark the parking slot as unoccupied
+        const { error: updateSlotError } = await supabase
+          .from('parking_slots')
+          .update({ 
+            is_occupied: false,
+            reserved_until: null,
+            reserved_by: null
+          })
+          .eq('id', booking.parking_slot_id);
+          
+        if (updateSlotError) {
+          console.error(`Error marking slot ${booking.parking_slot_id} as unoccupied:`, updateSlotError);
+          continue;
+        }
+        
+        console.log(`Expired overdue booking ${booking.id} and freed slot ${booking.parking_slot_id}`);
       }
+    }
+    
+    // Process each expired slot that might not have an associated booking
+    if (expiredSlots && expiredSlots.length > 0) {
+      console.log(`Found ${expiredSlots.length} expired slots without active bookings`);
       
-      console.log(`Expired overdue booking ${booking.id} and freed slot ${booking.parking_slot_id}`);
+      for (const slot of expiredSlots) {
+        // Mark the slot as unoccupied
+        const { error: updateSlotError } = await supabase
+          .from('parking_slots')
+          .update({ 
+            is_occupied: false,
+            reserved_until: null,
+            reserved_by: null
+          })
+          .eq('id', slot.id);
+          
+        if (updateSlotError) {
+          console.error(`Error marking expired slot ${slot.id} as unoccupied:`, updateSlotError);
+          continue;
+        }
+        
+        console.log(`Freed expired slot ${slot.id}`);
+      }
     }
   } catch (error) {
     console.error('Error checking for overdue bookings:', error);

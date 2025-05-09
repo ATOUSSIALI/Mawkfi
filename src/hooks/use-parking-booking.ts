@@ -77,10 +77,14 @@ export function useParkingBooking() {
         throw bookingError;
       }
       
-      // Update the parking slot to mark it as occupied
+      // Update the parking slot to mark it as occupied with reservation details
       const { error: slotError } = await supabase
         .from('parking_slots')
-        .update({ is_occupied: true })
+        .update({ 
+          is_occupied: true,
+          reserved_until: endTime.toISOString(),
+          reserved_by: userId
+        })
         .eq('id', spotId);
         
       if (slotError) {
@@ -100,7 +104,11 @@ export function useParkingBooking() {
         // If payment fails, revert the slot update and delete the booking
         await supabase
           .from('parking_slots')
-          .update({ is_occupied: false })
+          .update({ 
+            is_occupied: false,
+            reserved_until: null,
+            reserved_by: null
+          })
           .eq('id', spotId);
           
         await supabase
@@ -155,7 +163,11 @@ export function useParkingBooking() {
       // Update the parking slot to mark it as unoccupied
       const { error: slotError } = await supabase
         .from('parking_slots')
-        .update({ is_occupied: false })
+        .update({ 
+          is_occupied: false,
+          reserved_until: null,
+          reserved_by: null
+        })
         .eq('id', spotId);
         
       if (slotError) {

@@ -12,6 +12,8 @@ interface ParkingSpot {
   id: string;
   label: string;
   status: SpotStatus;
+  reserved_until?: string | null;
+  reserved_by?: string | null;
 }
 
 interface ParkingSpotSelectionProps {
