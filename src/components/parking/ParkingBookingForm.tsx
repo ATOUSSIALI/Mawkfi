@@ -26,6 +26,7 @@ const ParkingBookingForm: React.FC<ParkingBookingFormProps> = ({
   onProceedToPayment,
   isProcessing
 }) => {
+  // Only render if there's a selected spot and it's available
   if (!selectedSpot) return null;
   
   const calculateTotalPrice = hourlyPrice * duration;

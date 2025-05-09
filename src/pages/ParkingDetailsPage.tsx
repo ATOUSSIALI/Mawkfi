@@ -129,6 +129,10 @@ const ParkingDetailsPage = () => {
     );
   }
   
+  // Check if there are available spots
+  const availableSpots = spots.filter(spot => spot.status === 'available');
+  const hasAvailableSpots = availableSpots.length > 0;
+  
   const selectedSpot = selectedSpotId 
     ? spots.find(s => s.id === selectedSpotId)
     : undefined;
@@ -160,7 +164,8 @@ const ParkingDetailsPage = () => {
         isLoading={isLoading}
       />
       
-      {selectedSpotId && (
+      {/* Only show the booking form when a spot is selected AND spots are available */}
+      {selectedSpotId && hasAvailableSpots && (
         <ParkingBookingForm
           selectedSpot={selectedSpot}
           spots={spots}

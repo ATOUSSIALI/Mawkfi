@@ -1,3 +1,4 @@
+
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { checkAndExpireOverdueBookings } from '@/utils/bookingScheduler';
@@ -9,7 +10,7 @@ export interface ParkingLocation {
   address: string;
   hourly_price: number;
   image_url: string | null;
-  description?: string | null; // Made description optional and potentially null
+  description: string | null; // Ensuring this property exists and is properly typed
   available_spots: number;
   total_spots: number;
 }
