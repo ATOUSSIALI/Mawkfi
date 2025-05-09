@@ -1,4 +1,3 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { checkAndExpireOverdueBookings } from '@/utils/bookingScheduler';
@@ -52,6 +51,7 @@ export function useParkingDetails(parkingId: string | undefined) {
         address: data.address,
         hourly_price: Number(data.hourly_price),
         image_url: data.image_url,
+        // Add description field with fallback if it doesn't exist in the database
         description: data.description || "Located in a convenient area with easy access and secure facilities.",
         available_spots: data.available_spots,
         total_spots: data.total_spots

@@ -73,7 +73,7 @@ export const checkAndExpireOverdueBookings = async () => {
     // Get all active bookings that have ended
     const { data: overdueBookings, error } = await supabase
       .from('bookings')
-      .select('id, parking_slot_id, end_time, status')
+      .select('id, parking_slot_id, end_time, is_active')
       .eq('is_active', true)
       .lt('end_time', now);
       
@@ -97,6 +97,12 @@ export const checkAndExpireOverdueBookings = async () => {
       console.log(`Found ${overdueBookings.length} overdue bookings to expire`);
       
       for (const booking of overdueBookings) {
+        // Make sure booking data exists and has required properties
+        if (!booking || !booking.id || !booking.parking_slot_id) {
+          console.error('Invalid booking data:', booking);
+          continue;
+        }
+        
         // Mark the booking as inactive and completed
         const { error: updateBookingError } = await supabase
           .from('bookings')

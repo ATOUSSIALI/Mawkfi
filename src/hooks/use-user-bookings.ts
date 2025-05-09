@@ -41,8 +41,8 @@ export function useUserBookings(status: BookingStatus = 'all') {
         throw new Error('Authentication required to view bookings');
       }
       
-      // Build the query
-      let query = supabase
+      // Modify the query to handle status as a separate column
+      const { data, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
           *,
@@ -50,15 +50,19 @@ export function useUserBookings(status: BookingStatus = 'all') {
           parking_slots(slot_label)
         `)
         .eq('user_id', user.id)
-        .order('start_time', { ascending: false });
-      
-      // Filter by status if specified
-      if (status !== 'all') {
-        query = query.eq('status', status);
-      }
-      
-      // Execute the query
-      const { data, error: bookingsError } = await query;
+        .order('start_time', { ascending: false })
+        .then(result => {
+          // Filter by status in JavaScript if needed
+          if (status !== 'all' && result.data) {
+            result.data = result.data.filter(b => {
+              // Derive status from other fields if not present
+              const bookingStatus = b.status || 
+                (b.is_active ? 'upcoming' : 'completed');
+              return bookingStatus === status;
+            });
+          }
+          return result;
+        });
       
       if (bookingsError) throw bookingsError;
       
@@ -74,14 +78,14 @@ export function useUserBookings(status: BookingStatus = 'all') {
         endTime: booking.end_time,
         duration: booking.duration_hours,
         price: Number(booking.total_price),
-        status: booking.status || 'completed',
+        // Handle missing status field by deriving from is_active
+        status: booking.status || (booking.is_active ? 'upcoming' : 'completed'),
         isActive: booking.is_active,
         bookingCode: booking.booking_code,
         parkingSlotId: booking.parking_slot_id,
         parkingLocationId: booking.parking_location_id
       }));
-    },
-    enabled: true
+    }
   });
   
   // Setup subscription for real-time updates

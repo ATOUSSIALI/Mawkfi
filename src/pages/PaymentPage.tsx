@@ -2,15 +2,17 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import PageContainer from '@/components/ui-components/PageContainer';
-import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { CreditCard, Clock, AlertTriangle } from 'lucide-react';
-import WalletCard from '@/components/payment/WalletCard';
 import { useWallet } from '@/contexts/WalletContext';
 import { useParkingBooking } from '@/hooks/use-parking-booking';
 import { supabase } from '@/integrations/supabase/client';
 import { checkAndExpireOverdueBookings } from '@/utils/bookingScheduler';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import BookingDetailsCard from '@/components/payment/BookingDetailsCard';
+import InvalidBookingAlert from '@/components/payment/InvalidBookingAlert';
+import UnavailableSpotAlert from '@/components/payment/UnavailableSpotAlert';
+import WalletCard from '@/components/payment/WalletCard';
+import WalletBalanceAlert from '@/components/parking/WalletBalanceAlert';
+import PaymentActionButton from '@/components/payment/PaymentActionButton';
 
 const PaymentPage = () => {
   const location = useLocation();
@@ -177,14 +179,7 @@ const PaymentPage = () => {
   if (!bookingDetails || !bookingDetails.spotId) {
     return (
       <PageContainer>
-        <div className="text-center py-8">
-          <AlertTriangle size={48} className="mx-auto text-amber-500 mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Invalid Booking</h1>
-          <p className="text-muted-foreground mb-6">No parking spot was selected.</p>
-          <Button onClick={() => navigate('/parking')}>
-            Find Parking
-          </Button>
-        </div>
+        <InvalidBookingAlert />
       </PageContainer>
     );
   }
@@ -193,93 +188,35 @@ const PaymentPage = () => {
     <PageContainer className="pb-20">
       <h1 className="text-2xl font-bold mb-6">Payment</h1>
       
-      {!isSpotStillAvailable && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Spot Unavailable</AlertTitle>
-          <AlertDescription>
-            This parking spot is no longer available. Please go back and select another spot.
-          </AlertDescription>
-        </Alert>
-      )}
+      {!isSpotStillAvailable && <UnavailableSpotAlert />}
       
-      <div className="bg-card rounded-lg border p-4 mb-6">
-        <h2 className="font-semibold mb-2">Booking Details</h2>
-        
-        <div className="space-y-2">
-          <div className="flex justify-between">
-            <p className="text-muted-foreground">Parking</p>
-            <p className="font-medium">{bookingDetails.parkingLotName}</p>
-          </div>
-          
-          <div className="flex justify-between">
-            <p className="text-muted-foreground">Spot</p>
-            <p className="font-medium">{bookingDetails.spotLabel}</p>
-          </div>
-          
-          <div className="flex justify-between">
-            <p className="text-muted-foreground">Duration</p>
-            <div className="flex items-center">
-              <Clock size={16} className="mr-1 text-primary" />
-              <p className="font-medium">{bookingDetails.duration} hour{bookingDetails.duration > 1 ? 's' : ''}</p>
-            </div>
-          </div>
-          
-          <div className="border-t mt-2 pt-2 flex justify-between">
-            <p className="font-medium">Total</p>
-            <p className="font-bold text-primary">{bookingDetails.price} DZD</p>
-          </div>
-        </div>
-      </div>
+      <BookingDetailsCard 
+        parkingLotName={bookingDetails.parkingLotName}
+        spotLabel={bookingDetails.spotLabel}
+        duration={bookingDetails.duration}
+        price={bookingDetails.price}
+      />
       
       <div className="mb-6">
         <h2 className="font-semibold mb-2">Pay with Wallet</h2>
         <WalletCard onAddFunds={handleAddFunds} />
         
         {balance < bookingDetails.price && (
-          <Alert className="mt-4 bg-amber-50 border-amber-200">
-            <AlertTriangle className="h-4 w-4 text-amber-500" />
-            <AlertTitle className="text-amber-700">Insufficient Balance</AlertTitle>
-            <AlertDescription className="text-amber-600">
-              <p className="mb-2">
-                You need {bookingDetails.price - balance} DZD more in your wallet to complete this booking.
-              </p>
-              <Button
-                variant="outline" 
-                size="sm" 
-                className="text-amber-700 border-amber-300 hover:bg-amber-100"
-                onClick={handleAddFunds}
-              >
-                Top Up Wallet
-              </Button>
-            </AlertDescription>
-          </Alert>
+          <WalletBalanceAlert 
+            currentBalance={balance}
+            requiredAmount={bookingDetails.price}
+          />
         )}
       </div>
       
-      <Button 
-        className="w-full btn-primary"
+      <PaymentActionButton 
+        price={bookingDetails.price}
+        isProcessing={isProcessing}
+        isCheckingAvailability={isCheckingAvailability}
+        isSpotAvailable={isSpotStillAvailable}
         onClick={handleMakePayment}
         disabled={isProcessing || balance < bookingDetails.price || !isSpotStillAvailable || isCheckingAvailability}
-      >
-        {isProcessing ? (
-          <span className="flex items-center">
-            Processing...
-          </span>
-        ) : isCheckingAvailability ? (
-          <span className="flex items-center">
-            Checking availability...
-          </span>
-        ) : !isSpotStillAvailable ? (
-          <span className="flex items-center">
-            Spot Unavailable
-          </span>
-        ) : (
-          <span className="flex items-center">
-            Pay {bookingDetails.price} DZD
-          </span>
-        )}
-      </Button>
+      />
       
       <p className="text-sm text-muted-foreground text-center mt-4">
         By proceeding, you agree to our terms and conditions for parking reservations.
