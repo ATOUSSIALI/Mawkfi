@@ -10,7 +10,7 @@ export interface ParkingLocation {
   address: string;
   hourly_price: number;
   image_url: string | null;
-  description: string | null; // Ensuring this property exists and is properly typed
+  description: string | null;
   available_spots: number;
   total_spots: number;
 }
@@ -74,6 +74,7 @@ export function useParkingDetails(parkingId: string | undefined) {
         
       if (error) throw error;
       
+      // Correctly map is_occupied to status
       return data.map(slot => ({
         id: slot.id,
         label: slot.slot_label,

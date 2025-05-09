@@ -46,6 +46,7 @@ const ParkingSpotSelection = ({
     );
   }
   
+  // Calculate available spots correctly
   const availableSpots = spots.filter(spot => spot.status === 'available');
   const availableCount = availableSpots.length;
   const occupiedCount = spots.filter(spot => spot.status === 'occupied').length;
@@ -67,7 +68,13 @@ const ParkingSpotSelection = ({
         </div>
       </div>
       
-      {spots.length === 0 || !hasAvailableSpots ? (
+      {spots.length === 0 ? (
+        <Alert className="mb-4">
+          <AlertDescription>
+            No parking spots found for this location. Please try another parking location.
+          </AlertDescription>
+        </Alert>
+      ) : !hasAvailableSpots ? (
         <Alert className="mb-4">
           <AlertDescription>
             No parking spots are available for this location. Please try another parking location.
