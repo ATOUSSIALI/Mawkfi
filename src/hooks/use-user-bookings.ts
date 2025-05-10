@@ -79,7 +79,7 @@ export function useUserBookings(status: BookingStatus = 'all') {
         duration: booking.duration_hours,
         price: Number(booking.total_price),
         // Handle missing status field by deriving from is_active
-        status: booking.status || (booking.is_active ? 'upcoming' : 'completed'),
+        status: booking.status || (booking.is_active ? 'upcoming' : 'completed') as BookingStatus,
         isActive: booking.is_active,
         bookingCode: booking.booking_code,
         parkingSlotId: booking.parking_slot_id,

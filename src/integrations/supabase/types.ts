@@ -20,6 +20,7 @@ export type Database = {
           parking_location_id: string
           parking_slot_id: string
           start_time: string
+          status: string | null
           total_price: number
           updated_at: string
           user_id: string
@@ -34,6 +35,7 @@ export type Database = {
           parking_location_id: string
           parking_slot_id: string
           start_time: string
+          status?: string | null
           total_price: number
           updated_at?: string
           user_id: string
@@ -48,6 +50,7 @@ export type Database = {
           parking_location_id?: string
           parking_slot_id?: string
           start_time?: string
+          status?: string | null
           total_price?: number
           updated_at?: string
           user_id?: string
