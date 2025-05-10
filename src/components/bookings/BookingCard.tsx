@@ -5,7 +5,7 @@ import { Calendar, Clock, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useParkingBooking } from '@/hooks/use-parking-booking';
 import { useToast } from '@/hooks/use-toast';
-import { Booking } from '@/hooks/use-user-bookings';
+import { Booking } from '@/types/booking';
 
 interface BookingCardProps {
   booking: Booking;

@@ -33,11 +33,11 @@ const ParkingDetailsPage = () => {
   }, []);
 
   const {
-    parkingLot,
+    parkingDetails,
     spots,
     isLoading,
     refreshData
-  } = useParkingDetails(id);
+  } = useParkingDetails(id || '');
 
   const { verifySpotAvailability, isVerifying } = useSpotVerifier({
     onSpotUnavailable: () => setSelectedSpotId(null),
@@ -68,7 +68,7 @@ const ParkingDetailsPage = () => {
   };
   
   const handleProceedToPayment = async () => {
-    if (!selectedSpotId || !parkingLot) return;
+    if (!selectedSpotId || !parkingDetails) return;
     
     // Verify user is logged in
     const { data: { user } } = await supabase.auth.getUser();
@@ -90,7 +90,7 @@ const ParkingDetailsPage = () => {
     if (!isAvailable) return;
     
     // Check wallet balance
-    const calculateTotalPrice = parkingLot.hourly_price * duration;
+    const calculateTotalPrice = parkingDetails.hourly_price * duration;
     if (balance < calculateTotalPrice) {
       toast({
         title: "Insufficient Balance",
@@ -102,12 +102,12 @@ const ParkingDetailsPage = () => {
 
     navigate('/payment', { 
       state: { 
-        parkingLotId: parkingLot.id,
-        parkingLotName: parkingLot.name,
+        parkingLotId: parkingDetails.id,
+        parkingLotName: parkingDetails.name,
         spotId: selectedSpotId,
         spotLabel: selectedSpot?.label,
         duration,
-        price: parkingLot.hourly_price * duration,
+        price: parkingDetails.hourly_price * duration,
       } 
     });
   };
@@ -122,7 +122,7 @@ const ParkingDetailsPage = () => {
     );
   }
   
-  if (!parkingLot) {
+  if (!parkingDetails) {
     return (
       <PageContainer>
         <div className="text-center py-8">
@@ -146,10 +146,10 @@ const ParkingDetailsPage = () => {
   return (
     <PageContainer className="pb-20">
       <ParkingHeader 
-        name={parkingLot.name} 
-        address={parkingLot.address}
-        description={parkingLot.description}
-        imageUrl={parkingLot.image_url}
+        name={parkingDetails.name} 
+        address={parkingDetails.address}
+        description={parkingDetails.description}
+        imageUrl={parkingDetails.image_url}
       />
       
       <ParkingDetailsHeader
@@ -158,9 +158,9 @@ const ParkingDetailsPage = () => {
       />
       
       <ParkingInfo 
-        hourlyPrice={parkingLot.hourly_price}
-        availableSpots={parkingLot.available_spots}
-        totalSpots={parkingLot.total_spots}
+        hourlyPrice={parkingDetails.hourly_price}
+        availableSpots={parkingDetails.available_spots}
+        totalSpots={parkingDetails.total_spots}
       />
       
       <ParkingSpotSelection
@@ -177,7 +177,7 @@ const ParkingDetailsPage = () => {
           spots={spots}
           duration={duration}
           setDuration={setDuration}
-          hourlyPrice={parkingLot.hourly_price}
+          hourlyPrice={parkingDetails.hourly_price}
           walletBalance={balance}
           onProceedToPayment={handleProceedToPayment}
           isProcessing={isVerifying || isProcessing}

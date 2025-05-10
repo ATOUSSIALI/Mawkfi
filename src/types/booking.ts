@@ -21,4 +21,23 @@ export interface BookingResult {
 export interface CancellationResult {
   success: boolean;
   error?: Error;
+  refunded?: number;
+}
+
+export type BookingStatus = 'upcoming' | 'completed' | 'cancelled';
+
+export interface Booking {
+  id: string;
+  parkingName: string;
+  spotLabel: string;
+  address: string;
+  startTime: string;
+  endTime: string;
+  duration: number;
+  price: number;
+  status: BookingStatus;
+  isActive: boolean;
+  bookingCode: string;
+  parkingSlotId: string;
+  parkingLocationId: string;
 }

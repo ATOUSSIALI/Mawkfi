@@ -13,6 +13,7 @@ export interface ParkingLocation {
   available_spots: number | null;
   created_at: string;
   updated_at: string;
+  description?: string;
 }
 
 export interface ParkingSpot {
@@ -20,6 +21,7 @@ export interface ParkingSpot {
   label: string;
   is_occupied: boolean;
   reserved_until: string | null;
+  status: 'available' | 'occupied';
 }
 
 export function useParkingDetails(parkingId: string) {
@@ -42,12 +44,14 @@ export function useParkingDetails(parkingId: string) {
       return data;
     },
     enabled: !!parkingId,
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "Failed to load parking details",
-        variant: "destructive"
-      });
+    meta: {
+      onError: (error: Error) => {
+        toast({
+          title: "Error",
+          description: "Failed to load parking details",
+          variant: "destructive"
+        });
+      }
     }
   });
   
@@ -70,26 +74,41 @@ export function useParkingDetails(parkingId: string) {
         id: spot.id,
         label: spot.slot_label,
         is_occupied: spot.is_occupied,
-        reserved_until: spot.reserved_until
+        reserved_until: spot.reserved_until,
+        status: spot.is_occupied ? 'occupied' : 'available'
       }));
     },
     enabled: !!parkingId,
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "Failed to load parking spots",
-        variant: "destructive"
-      });
+    meta: {
+      onError: (error: Error) => {
+        toast({
+          title: "Error",
+          description: "Failed to load parking spots",
+          variant: "destructive"
+        });
+      }
     }
   });
   
   const isLoading = isLoadingDetails || isLoadingSpots;
   const error = detailsError || spotsError;
 
+  // Added refresh function to manually trigger refetches
+  const refreshData = async () => {
+    await Promise.all([
+      // Refetch both queries
+      // @ts-ignore - types issue with queryClient refetch
+      queryClient.refetchQueries({ queryKey: ['parking-details', parkingId] }),
+      // @ts-ignore - types issue with queryClient refetch  
+      queryClient.refetchQueries({ queryKey: ['parking-spots', parkingId] })
+    ]);
+  };
+
   return {
     parkingDetails,
     spots,
     isLoading,
-    error
+    error,
+    refreshData
   };
 }

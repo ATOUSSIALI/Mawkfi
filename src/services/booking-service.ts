@@ -100,6 +100,25 @@ export async function createBooking(params: BookingParams): Promise<BookingResul
 
 export async function cancelBooking(bookingId: string, spotId: string): Promise<CancellationResult> {
   try {
+    // Get booking details to know if we need to refund
+    const { data: booking, error: bookingFetchError } = await supabase
+      .from('bookings')
+      .select('user_id, total_price, is_active, status')
+      .eq('id', bookingId)
+      .single();
+      
+    if (bookingFetchError) {
+      throw bookingFetchError;
+    }
+    
+    // Check if booking is already cancelled
+    if (booking.status === 'cancelled' || !booking.is_active) {
+      return { 
+        success: false, 
+        error: new Error("Booking is already cancelled") 
+      };
+    }
+    
     // Update the booking to mark it as inactive and cancelled
     const { error: bookingError } = await supabase
       .from('bookings')
@@ -127,7 +146,8 @@ export async function cancelBooking(bookingId: string, spotId: string): Promise<
       throw slotError;
     }
     
-    // Could add code here to refund the user if cancellation policy allows
+    // Note: Refund functionality would be implemented here if required
+    // For now we're not adding refund logic as it wasn't specified
     
     return { success: true };
   } catch (error: any) {
