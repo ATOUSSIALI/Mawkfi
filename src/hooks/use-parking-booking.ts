@@ -8,27 +8,21 @@ import { createBooking, cancelBooking as cancelBookingService } from '@/services
 export function useParkingBooking() {
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
-  const { deductBalance } = useWallet();
+  const { refreshBalance } = useWallet();
 
   const bookSpot = async (params: BookingParams): Promise<BookingResult> => {
     setIsProcessing(true);
     
     try {
-      // Deduct the amount from the user's wallet
-      const paymentResult = await deductBalance(params.price, `Parking reservation at spot ${params.spotLabel}`);
-      
-      if (!paymentResult) {
-        throw new Error("Payment failed");
-      }
-      
-      // Create the booking
+      // Call the booking service
       const bookingResult = await createBooking(params);
       
       if (!bookingResult.success) {
-        // If booking fails, we should refund the user
-        // This would be handled in a real application
         throw bookingResult.error || new Error("Failed to create booking");
       }
+      
+      // Refresh the wallet balance after successful booking
+      refreshBalance();
       
       return bookingResult;
     } catch (error: any) {
@@ -52,6 +46,22 @@ export function useParkingBooking() {
       
       if (!result.success) {
         throw result.error || new Error("Failed to cancel booking");
+      }
+      
+      // If booking was successfully cancelled, refresh wallet balance to show refund
+      refreshBalance();
+      
+      // Show toast with refund information if available
+      if (result.refunded) {
+        toast({
+          title: "Booking Cancelled",
+          description: `Your booking has been cancelled and ${result.refunded} DZD has been refunded to your wallet.`
+        });
+      } else {
+        toast({
+          title: "Booking Cancelled",
+          description: "Your booking has been cancelled successfully."
+        });
       }
       
       return result;

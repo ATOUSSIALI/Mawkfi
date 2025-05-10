@@ -104,6 +104,13 @@ const PaymentPageContent = ({
             variant: "destructive"
           });
           return;
+        } else if (bookingResult.error?.message?.includes('Insufficient funds')) {
+          toast({
+            title: "Insufficient Funds",
+            description: bookingResult.error.message,
+            variant: "destructive"
+          });
+          return;
         }
         throw new Error(bookingResult.error?.message || "Failed to create booking");
       }

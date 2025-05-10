@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useParkingBooking } from '@/hooks/use-parking-booking';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { BookingStatus } from '@/hooks/use-user-bookings';
+import { BookingStatus } from '@/types/booking';
 
 // Interface to match the structure of our bookings data
 interface BookingData {
@@ -103,10 +103,17 @@ const BookingDetailsPage = () => {
     const result = await cancelBooking(booking.id, booking.parkingSlotId);
     
     if (result.success) {
-      toast({
-        title: "Booking Cancelled",
-        description: "Your booking has been cancelled successfully",
-      });
+      if (result.refunded) {
+        toast({
+          title: "Booking Cancelled",
+          description: `Your booking has been cancelled and ${result.refunded} DZD has been refunded to your wallet.`,
+        });
+      } else {
+        toast({
+          title: "Booking Cancelled",
+          description: "Your booking has been cancelled successfully.",
+        });
+      }
       
       // Update booking locally for instant UI feedback
       setBooking(prev => prev ? { ...prev, status: 'cancelled' } : null);

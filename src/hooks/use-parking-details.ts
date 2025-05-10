@@ -2,6 +2,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { QueryClient } from '@tanstack/react-query';
 
 export interface ParkingLocation {
   id: string;
@@ -23,6 +24,9 @@ export interface ParkingSpot {
   reserved_until: string | null;
   status: 'available' | 'occupied';
 }
+
+// Create a QueryClient instance
+const queryClient = new QueryClient();
 
 export function useParkingDetails(parkingId: string) {
   const { toast } = useToast();
@@ -97,9 +101,7 @@ export function useParkingDetails(parkingId: string) {
   const refreshData = async () => {
     await Promise.all([
       // Refetch both queries
-      // @ts-ignore - types issue with queryClient refetch
       queryClient.refetchQueries({ queryKey: ['parking-details', parkingId] }),
-      // @ts-ignore - types issue with queryClient refetch  
       queryClient.refetchQueries({ queryKey: ['parking-spots', parkingId] })
     ]);
   };

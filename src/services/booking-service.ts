@@ -9,10 +9,28 @@ export async function createBooking(params: BookingParams): Promise<BookingResul
     spotId, 
     duration, 
     userId,
-    spotLabel
+    spotLabel,
+    price
   } = params;
 
   try {
+    // Start a Supabase transaction by using multiple operations
+    // First check if user has enough balance
+    const { data: walletData, error: walletError } = await supabase
+      .from('wallets')
+      .select('balance')
+      .eq('id', userId)
+      .single();
+      
+    if (walletError) throw walletError;
+    
+    if (!walletData || walletData.balance < price) {
+      return {
+        success: false,
+        error: new Error(`Insufficient funds. Required: ${price} DZD, Available: ${walletData?.balance || 0} DZD`)
+      };
+    }
+
     // Verify spot is still available
     const { data: spotData, error: spotError } = await supabase
       .from('parking_slots')
@@ -46,7 +64,7 @@ export async function createBooking(params: BookingParams): Promise<BookingResul
         start_time: startTime.toISOString(),
         end_time: endTime.toISOString(),
         duration_hours: duration,
-        total_price: params.price,
+        total_price: price,
         booking_code: bookingCode,
         is_active: true,
         status: 'upcoming'
@@ -56,6 +74,23 @@ export async function createBooking(params: BookingParams): Promise<BookingResul
       
     if (bookingError) {
       throw bookingError;
+    }
+
+    // Deduct payment from user's wallet using withdraw_funds function
+    const { error: paymentError } = await supabase.rpc('withdraw_funds', {
+      amount_to_withdraw: price,
+      user_id_input: userId,
+      description_input: `Payment for parking spot ${spotLabel} for ${duration} hour(s)`
+    });
+    
+    if (paymentError) {
+      // If payment fails, delete the booking we just created
+      await supabase
+        .from('bookings')
+        .delete()
+        .eq('id', bookingData.id);
+        
+      throw paymentError;
     }
     
     // Update the parking slot to mark it as occupied with reservation details
@@ -69,7 +104,13 @@ export async function createBooking(params: BookingParams): Promise<BookingResul
       .eq('id', spotId);
       
     if (slotError) {
-      // If we fail to update the slot, we should cancel the booking
+      // If we fail to update the slot, we should cancel the booking and refund the payment
+      await supabase.rpc('add_funds', {
+        amount_to_add: price,
+        user_id_input: userId,
+        description_input: `Refund for failed booking of spot ${spotLabel}`
+      });
+      
       await supabase
         .from('bookings')
         .delete()
@@ -146,10 +187,29 @@ export async function cancelBooking(bookingId: string, spotId: string): Promise<
       throw slotError;
     }
     
-    // Note: Refund functionality would be implemented here if required
-    // For now we're not adding refund logic as it wasn't specified
+    // Refund the booking amount to user's wallet
+    const refundAmount = booking.total_price;
+    const { error: refundError } = await supabase.rpc('add_funds', {
+      amount_to_add: refundAmount,
+      user_id_input: booking.user_id,
+      description_input: `Refund for cancelled booking #${bookingId}`
+    });
     
-    return { success: true };
+    if (refundError) {
+      console.error('Error processing refund:', refundError);
+      // We've already cancelled the booking and freed the spot,
+      // so we'll return success but note the refund failed
+      return { 
+        success: true,
+        error: new Error(`Booking cancelled but refund failed: ${refundError.message}`),
+        refunded: 0
+      };
+    }
+    
+    return { 
+      success: true,
+      refunded: refundAmount 
+    };
   } catch (error: any) {
     console.error('Error cancelling booking:', error);
     return { success: false, error };

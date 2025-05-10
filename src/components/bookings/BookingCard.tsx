@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, MapPin } from 'lucide-react';
@@ -21,12 +20,14 @@ const BookingCard = ({ booking, onStatusChange, onClick }: BookingCardProps) => 
     upcoming: 'bg-primary',
     completed: 'bg-muted',
     cancelled: 'bg-destructive',
+    all: 'bg-primary', // Fallback, should not be used directly
   };
   
   const statusText = {
     upcoming: 'Active',
     completed: 'Completed',
     cancelled: 'Cancelled',
+    all: 'All', // Fallback, should not be used directly
   };
 
   // Check if the booking is cancellable (only upcoming bookings)
@@ -58,11 +59,6 @@ const BookingCard = ({ booking, onStatusChange, onClick }: BookingCardProps) => 
     const result = await cancelBooking(booking.id, booking.parkingSlotId);
     
     if (result.success) {
-      toast({
-        title: "Booking Cancelled",
-        description: "Your booking has been successfully cancelled",
-      });
-      
       // Trigger refetch of bookings if callback provided
       if (onStatusChange) {
         onStatusChange();

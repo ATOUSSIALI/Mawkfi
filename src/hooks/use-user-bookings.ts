@@ -3,24 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect } from 'react';
-
-export type BookingStatus = 'upcoming' | 'completed' | 'cancelled' | 'all';
-
-export interface Booking {
-  id: string;
-  parkingName: string;
-  spotLabel: string;
-  address: string;
-  startTime: string;
-  endTime: string;
-  duration: number;
-  price: number;
-  status: BookingStatus;
-  isActive: boolean;
-  bookingCode: string;
-  parkingSlotId: string;
-  parkingLocationId: string;
-}
+import { BookingStatus, Booking } from '@/types/booking';
 
 export function useUserBookings(status: BookingStatus = 'all') {
   const { toast } = useToast();
