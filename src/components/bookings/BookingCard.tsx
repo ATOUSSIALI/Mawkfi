@@ -1,30 +1,19 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, MapPin, AlertTriangle } from 'lucide-react';
+import { Calendar, Clock, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useParkingBooking } from '@/hooks/use-parking-booking';
 import { useToast } from '@/hooks/use-toast';
-
-export interface BookingDetails {
-  id: string;
-  parkingName: string;
-  spotLabel: string;
-  address: string;
-  startTime: string;
-  endTime: string;
-  duration: number; // in hours
-  price: number; // total price in DZD
-  status: 'upcoming' | 'completed' | 'cancelled';
-  parkingSlotId?: string;
-}
+import { Booking } from '@/hooks/use-user-bookings';
 
 interface BookingCardProps {
-  booking: BookingDetails;
+  booking: Booking;
   onStatusChange?: () => void;
+  onClick?: () => void;
 }
 
-const BookingCard = ({ booking, onStatusChange }: BookingCardProps) => {
+const BookingCard = ({ booking, onStatusChange, onClick }: BookingCardProps) => {
   const { cancelBooking, isProcessing } = useParkingBooking();
   const { toast } = useToast();
   
@@ -82,7 +71,7 @@ const BookingCard = ({ booking, onStatusChange }: BookingCardProps) => {
   };
 
   return (
-    <div className="border rounded-lg overflow-hidden">
+    <div className="border rounded-lg overflow-hidden" onClick={onClick}>
       <div className="p-4">
         <div className="flex justify-between items-start">
           <div>
@@ -123,7 +112,10 @@ const BookingCard = ({ booking, onStatusChange }: BookingCardProps) => {
               <Button 
                 variant="destructive" 
                 size="sm" 
-                onClick={handleCancelBooking}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCancelBooking();
+                }}
                 disabled={isProcessing}
               >
                 {isProcessing ? 'Cancelling...' : 'Cancel'}
@@ -131,7 +123,7 @@ const BookingCard = ({ booking, onStatusChange }: BookingCardProps) => {
             )}
             
             {booking.status === 'upcoming' && (
-              <Link to={`/booking/${booking.id}`}>
+              <Link to={`/booking/${booking.id}`} onClick={(e) => e.stopPropagation()}>
                 <Button variant="outline" size="sm">View Details</Button>
               </Link>
             )}

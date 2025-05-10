@@ -15,7 +15,7 @@ export interface Booking {
   endTime: string;
   duration: number;
   price: number;
-  status: 'upcoming' | 'completed' | 'cancelled';
+  status: BookingStatus;
   isActive: boolean;
   bookingCode: string;
   parkingSlotId: string;
@@ -79,7 +79,7 @@ export function useUserBookings(status: BookingStatus = 'all') {
         duration: booking.duration_hours,
         price: Number(booking.total_price),
         // Handle missing status field by deriving from is_active
-        status: booking.status || (booking.is_active ? 'upcoming' : 'completed') as BookingStatus,
+        status: (booking.status || (booking.is_active ? 'upcoming' : 'completed')) as BookingStatus,
         isActive: booking.is_active,
         bookingCode: booking.booking_code,
         parkingSlotId: booking.parking_slot_id,

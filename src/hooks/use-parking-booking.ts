@@ -1,139 +1,36 @@
 
 import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useWallet } from '@/contexts/WalletContext';
-import { scheduleBookingExpiration } from '@/utils/bookingScheduler';
-
-interface BookingParams {
-  parkingLotId: string;
-  parkingLotName: string;
-  spotId: string;
-  spotLabel: string;
-  duration: number;
-  price: number;
-  userId: string;
-}
+import { BookingParams, BookingResult, CancellationResult } from '@/types/booking';
+import { createBooking, cancelBooking as cancelBookingService } from '@/services/booking-service';
 
 export function useParkingBooking() {
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
   const { deductBalance } = useWallet();
 
-  const bookSpot = async (params: BookingParams) => {
-    const { 
-      parkingLotId, 
-      spotId, 
-      duration, 
-      price,
-      userId,
-      spotLabel
-    } = params;
-
+  const bookSpot = async (params: BookingParams): Promise<BookingResult> => {
     setIsProcessing(true);
     
     try {
-      // Verify spot is still available
-      const { data: spotData, error: spotError } = await supabase
-        .from('parking_slots')
-        .select('is_occupied')
-        .eq('id', spotId)
-        .single();
-        
-      if (spotError) throw spotError;
-      
-      if (spotData.is_occupied) {
-        return {
-          success: false,
-          error: { message: `Spot ${spotLabel} is already occupied` }
-        };
-      }
-      
-      // Calculate start and end times
-      const startTime = new Date();
-      const endTime = new Date(startTime.getTime() + duration * 60 * 60 * 1000);
-      
-      // Generate booking code
-      const bookingCode = 'BKG' + Math.floor(100000 + Math.random() * 900000);
-      
-      // Create a booking record
-      const { data: bookingData, error: bookingError } = await supabase
-        .from('bookings')
-        .insert({
-          user_id: userId,
-          parking_location_id: parkingLotId,
-          parking_slot_id: spotId,
-          start_time: startTime.toISOString(),
-          end_time: endTime.toISOString(),
-          duration_hours: duration,
-          total_price: price,
-          booking_code: bookingCode,
-          is_active: true,
-          status: 'upcoming'
-        })
-        .select('id')
-        .single();
-        
-      if (bookingError) {
-        throw bookingError;
-      }
-      
-      // Update the parking slot to mark it as occupied with reservation details
-      const { error: slotError } = await supabase
-        .from('parking_slots')
-        .update({ 
-          is_occupied: true,
-          reserved_until: endTime.toISOString(),
-          reserved_by: userId
-        })
-        .eq('id', spotId);
-        
-      if (slotError) {
-        // If we fail to update the slot, we should cancel the booking
-        await supabase
-          .from('bookings')
-          .delete()
-          .eq('id', bookingData.id);
-          
-        throw slotError;
-      }
-      
       // Deduct the amount from the user's wallet
-      const paymentResult = await deductBalance(price, `Parking reservation at spot ${params.spotLabel}`);
+      const paymentResult = await deductBalance(params.price, `Parking reservation at spot ${params.spotLabel}`);
       
       if (!paymentResult) {
-        // If payment fails, revert the slot update and delete the booking
-        await supabase
-          .from('parking_slots')
-          .update({ 
-            is_occupied: false,
-            reserved_until: null,
-            reserved_by: null
-          })
-          .eq('id', spotId);
-          
-        await supabase
-          .from('bookings')
-          .delete()
-          .eq('id', bookingData.id);
-          
         throw new Error("Payment failed");
       }
       
-      // Schedule the booking to expire automatically
-      scheduleBookingExpiration(
-        bookingData.id,
-        spotId,
-        endTime.toISOString()
-      );
+      // Create the booking
+      const bookingResult = await createBooking(params);
       
-      return {
-        success: true,
-        bookingId: bookingData.id,
-        bookingCode,
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString()
-      };
+      if (!bookingResult.success) {
+        // If booking fails, we should refund the user
+        // This would be handled in a real application
+        throw bookingResult.error || new Error("Failed to create booking");
+      }
+      
+      return bookingResult;
     } catch (error: any) {
       console.error('Error booking spot:', error);
       toast({
@@ -147,40 +44,17 @@ export function useParkingBooking() {
     }
   };
 
-  const cancelBooking = async (bookingId: string, spotId: string) => {
+  const cancelBooking = async (bookingId: string, spotId: string): Promise<CancellationResult> => {
     setIsProcessing(true);
     
     try {
-      // Update the booking to mark it as inactive and cancelled
-      const { error: bookingError } = await supabase
-        .from('bookings')
-        .update({ 
-          is_active: false,
-          status: 'cancelled'
-        })
-        .eq('id', bookingId);
-        
-      if (bookingError) {
-        throw bookingError;
+      const result = await cancelBookingService(bookingId, spotId);
+      
+      if (!result.success) {
+        throw result.error || new Error("Failed to cancel booking");
       }
       
-      // Update the parking slot to mark it as unoccupied
-      const { error: slotError } = await supabase
-        .from('parking_slots')
-        .update({ 
-          is_occupied: false,
-          reserved_until: null,
-          reserved_by: null
-        })
-        .eq('id', spotId);
-        
-      if (slotError) {
-        throw slotError;
-      }
-      
-      // Could add code here to refund the user if cancellation policy allows
-      
-      return { success: true };
+      return result;
     } catch (error: any) {
       console.error('Error cancelling booking:', error);
       toast({

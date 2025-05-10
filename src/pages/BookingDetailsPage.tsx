@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useParkingBooking } from '@/hooks/use-parking-booking';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { BookingStatus } from '@/hooks/use-user-bookings';
 
 // Interface to match the structure of our bookings data
 interface BookingData {
@@ -20,7 +21,7 @@ interface BookingData {
   endTime: string;
   duration: number;
   price: number;
-  status: 'upcoming' | 'completed' | 'cancelled';
+  status: BookingStatus;
   parkingSlotId: string;
   bookingCode: string;
 }
@@ -61,7 +62,7 @@ const BookingDetailsPage = () => {
             endTime: data.end_time,
             duration: data.duration_hours,
             price: Number(data.total_price),
-            status: data.status || 'completed',
+            status: (data.status || 'completed') as BookingStatus,
             parkingSlotId: data.parking_slot_id,
             bookingCode: data.booking_code
           });

@@ -1,43 +1,37 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { checkAndExpireOverdueBookings } from '@/utils/bookingScheduler';
-import { useEffect } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 export interface ParkingLocation {
   id: string;
   name: string;
   address: string;
-  hourly_price: number;
   image_url: string | null;
-  description: string | null;
-  available_spots: number;
+  hourly_price: number;
   total_spots: number;
+  available_spots: number | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ParkingSpot {
   id: string;
   label: string;
-  status: 'available' | 'occupied' | 'selected' | 'reserved';
-  reserved_until?: string | null;
-  reserved_by?: string | null;
+  is_occupied: boolean;
+  reserved_until: string | null;
 }
 
-export function useParkingDetails(parkingId: string | undefined) {
-  // Check and expire overdue bookings when hook is initialized
-  useEffect(() => {
-    checkAndExpireOverdueBookings();
-  }, []);
-
+export function useParkingDetails(parkingId: string) {
+  const { toast } = useToast();
+  
   const { 
-    data: parkingLot, 
-    isLoading: isLoadingParking,
-    refetch: refetchParkingLot
+    data: parkingDetails,
+    isLoading: isLoadingDetails,
+    error: detailsError
   } = useQuery({
-    queryKey: ['parkingLocation', parkingId],
-    queryFn: async () => {
-      if (!parkingId) throw new Error('No parking ID provided');
-      
+    queryKey: ['parking-details', parkingId],
+    queryFn: async (): Promise<ParkingLocation | null> => {
       const { data, error } = await supabase
         .from('parking_locations')
         .select('*')
@@ -45,87 +39,57 @@ export function useParkingDetails(parkingId: string | undefined) {
         .single();
         
       if (error) throw error;
-      
-      return {
-        id: data.id,
-        name: data.name,
-        address: data.address,
-        hourly_price: Number(data.hourly_price),
-        image_url: data.image_url,
-        // Add description field with fallback if it doesn't exist in the database
-        description: data.description || "Located in a convenient area with easy access and secure facilities.",
-        available_spots: data.available_spots,
-        total_spots: data.total_spots
-      } as ParkingLocation;
+      return data;
     },
-    enabled: !!parkingId
+    enabled: !!parkingId,
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to load parking details",
+        variant: "destructive"
+      });
+    }
   });
-
-  const { 
-    data: spots = [], 
+  
+  const {
+    data: spots = [],
     isLoading: isLoadingSpots,
-    refetch: refetchSpots
+    error: spotsError
   } = useQuery({
-    queryKey: ['parkingSpots', parkingId],
-    queryFn: async () => {
-      if (!parkingId) throw new Error('No parking ID provided');
-      
+    queryKey: ['parking-spots', parkingId],
+    queryFn: async (): Promise<ParkingSpot[]> => {
       const { data, error } = await supabase
         .from('parking_slots')
-        .select('*')
-        .eq('parking_location_id', parkingId);
+        .select('id, slot_label, is_occupied, reserved_until')
+        .eq('parking_location_id', parkingId)
+        .order('slot_label', { ascending: true });
         
       if (error) throw error;
       
-      // Map database fields to our ParkingSpot interface
-      return data.map(slot => ({
-        id: slot.id,
-        label: slot.slot_label,
-        status: slot.is_occupied ? 'occupied' as const : 'available' as const,
-        reserved_until: slot.reserved_until || null,
-        reserved_by: slot.reserved_by || null
+      return data.map(spot => ({
+        id: spot.id,
+        label: spot.slot_label,
+        is_occupied: spot.is_occupied,
+        reserved_until: spot.reserved_until
       }));
     },
-    enabled: !!parkingId
+    enabled: !!parkingId,
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to load parking spots",
+        variant: "destructive"
+      });
+    }
   });
-
-  // Setup subscription for real-time updates
-  useEffect(() => {
-    if (!parkingId) return;
-    
-    const channel = supabase
-      .channel('parking-details-changes')
-      .on('postgres_changes', { 
-        event: 'UPDATE', 
-        schema: 'public', 
-        table: 'parking_slots',
-        filter: `parking_location_id=eq.${parkingId}`
-      }, () => {
-        refetchSpots();
-      })
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'parking_locations',
-        filter: `id=eq.${parkingId}`
-      }, () => {
-        refetchParkingLot();
-      })
-      .subscribe();
-      
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [parkingId, refetchSpots, refetchParkingLot]);
-
-  const refreshData = async () => {
-    await Promise.all([refetchParkingLot(), refetchSpots()]);
-  };
+  
+  const isLoading = isLoadingDetails || isLoadingSpots;
+  const error = detailsError || spotsError;
 
   return {
-    parkingLot,
+    parkingDetails,
     spots,
-    isLoading: isLoadingParking || isLoadingSpots,
-    refreshData
+    isLoading,
+    error
   };
 }
