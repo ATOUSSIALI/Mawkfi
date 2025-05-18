@@ -7,6 +7,8 @@ export interface BookingParams {
   duration: number;
   price: number;
   userId: string;
+  startTime?: string; // Optional, defaults to current time if not provided
+  endTime?: string;   // Optional, calculated from duration if not provided
 }
 
 export interface BookingResult {

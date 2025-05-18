@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PageContainer from '@/components/ui-components/PageContainer';
@@ -22,7 +21,7 @@ const ParkingDetailsPage = () => {
   const { toast } = useToast();
   const { bookSpot, isProcessing } = useParkingBooking();
   const { balance } = useWallet();
-  
+
   const [selectedSpotId, setSelectedSpotId] = useState<string | null>(null);
   const [duration, setDuration] = useState(1); // Default 1 hour
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -43,12 +42,12 @@ const ParkingDetailsPage = () => {
     onSpotUnavailable: () => setSelectedSpotId(null),
     refetchSpots: async () => refreshData()
   });
-  
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await refreshData();
     setIsRefreshing(false);
-    
+
     // Clear selected spot if it's no longer available
     if (selectedSpotId) {
       const spot = spots.find(s => s.id === selectedSpotId);
@@ -62,14 +61,14 @@ const ParkingDetailsPage = () => {
       }
     }
   };
-  
+
   const handleSpotSelect = (spotId: string) => {
     setSelectedSpotId(spotId === selectedSpotId ? null : spotId);
   };
-  
-  const handleProceedToPayment = async () => {
+
+  const handleProceedToPayment = async (startTime: Date, endTime: Date) => {
     if (!selectedSpotId || !parkingDetails) return;
-    
+
     // Verify user is logged in
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -81,16 +80,30 @@ const ParkingDetailsPage = () => {
       navigate('/login');
       return;
     }
-    
-    // Verify spot is still available
+
+    // Verify spot is still available with time range
     const selectedSpot = spots.find(spot => spot.id === selectedSpotId);
     if (!selectedSpot) return;
-    
-    const isAvailable = await verifySpotAvailability(selectedSpotId, selectedSpot.label);
+
+    // Convert dates to ISO strings for verification
+    const startTimeISO = startTime.toISOString();
+    const endTimeISO = endTime.toISOString();
+
+    // Calculate actual duration in hours
+    const actualDuration = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+
+    // Calculate price based on actual duration
+    const calculateTotalPrice = parkingDetails.hourly_price * actualDuration;
+
+    const isAvailable = await verifySpotAvailability(
+      selectedSpotId,
+      selectedSpot.label,
+      startTimeISO,
+      endTimeISO
+    );
     if (!isAvailable) return;
-    
+
     // Check wallet balance
-    const calculateTotalPrice = parkingDetails.hourly_price * duration;
     if (balance < calculateTotalPrice) {
       toast({
         title: "Insufficient Balance",
@@ -100,18 +113,20 @@ const ParkingDetailsPage = () => {
       return;
     }
 
-    navigate('/payment', { 
-      state: { 
+    navigate('/payment', {
+      state: {
         parkingLotId: parkingDetails.id,
         parkingLotName: parkingDetails.name,
         spotId: selectedSpotId,
-        spotLabel: selectedSpot?.label,
-        duration,
-        price: parkingDetails.hourly_price * duration,
-      } 
+        spotLabel: selectedSpot.label,
+        duration: actualDuration,
+        price: calculateTotalPrice,
+        startTime: startTimeISO,
+        endTime: endTimeISO,
+      }
     });
   };
-  
+
   if (isLoading) {
     return (
       <PageContainer>
@@ -121,7 +136,7 @@ const ParkingDetailsPage = () => {
       </PageContainer>
     );
   }
-  
+
   if (!parkingDetails) {
     return (
       <PageContainer>
@@ -134,42 +149,42 @@ const ParkingDetailsPage = () => {
       </PageContainer>
     );
   }
-  
+
   // Check if there are available spots
   const availableSpots = spots.filter(spot => spot.status === 'available');
   const hasAvailableSpots = availableSpots.length > 0;
-  
-  const selectedSpot = selectedSpotId 
+
+  const selectedSpot = selectedSpotId
     ? spots.find(s => s.id === selectedSpotId)
     : undefined;
-  
+
   return (
     <PageContainer className="pb-20">
-      <ParkingHeader 
-        name={parkingDetails.name} 
+      <ParkingHeader
+        name={parkingDetails.name}
         address={parkingDetails.address}
         description={parkingDetails.description}
         imageUrl={parkingDetails.image_url}
       />
-      
+
       <ParkingDetailsHeader
         onRefresh={handleRefresh}
         isRefreshing={isRefreshing}
       />
-      
-      <ParkingInfo 
+
+      <ParkingInfo
         hourlyPrice={parkingDetails.hourly_price}
         availableSpots={parkingDetails.available_spots}
         totalSpots={parkingDetails.total_spots}
       />
-      
+
       <ParkingSpotSelection
         spots={spots}
         selectedSpotId={selectedSpotId}
         onSpotSelect={handleSpotSelect}
         isLoading={isLoading}
       />
-      
+
       {/* Only show the booking form when a spot is selected AND spots are available */}
       {selectedSpotId && hasAvailableSpots && (
         <ParkingBookingForm

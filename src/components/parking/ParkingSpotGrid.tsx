@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { CheckCircle, CircleParking, CircleParkingOff } from 'lucide-react';
+import { CheckCircle, CircleParking, CircleParkingOff, Clock } from 'lucide-react';
 
 export type SpotStatus = 'available' | 'occupied' | 'selected' | 'reserved';
 
@@ -9,6 +9,7 @@ interface ParkingSpot {
   id: string;
   label: string;
   status: SpotStatus;
+  reservation_info?: string;
 }
 
 interface ParkingSpotGridProps {
@@ -25,12 +26,12 @@ const ParkingSpotGrid = ({
   className
 }: ParkingSpotGridProps) => {
   const getSpotStyles = (status: SpotStatus, isSelected: boolean): string => {
-    const baseStyles = "flex items-center justify-center rounded-lg p-3 text-center transition-colors relative";
-    
+    const baseStyles = "flex flex-col items-center justify-center rounded-lg p-3 text-center transition-colors relative min-h-[70px]";
+
     if (isSelected) {
       return cn(baseStyles, "bg-primary text-white border-2 border-primary");
     }
-    
+
     switch (status) {
       case 'available':
         return cn(baseStyles, "bg-white border border-primary/30 text-primary hover:bg-primary/10 cursor-pointer");
@@ -47,7 +48,7 @@ const ParkingSpotGrid = ({
     if (isSelected) {
       return <CheckCircle size={16} className="absolute top-0 right-0 m-1 text-white" />;
     }
-    
+
     switch (status) {
       case 'available':
         return <CircleParking size={16} className="absolute top-0 right-0 m-1 text-green-500" />;
@@ -74,7 +75,14 @@ const ParkingSpotGrid = ({
           aria-disabled={spot.status !== 'available'}
         >
           {getSpotStatusIcon(spot.status, spot.id === selectedSpotId)}
-          {spot.label}
+          <span className="font-medium">{spot.label}</span>
+
+          {spot.status === 'reserved' && spot.reservation_info && (
+            <div className="mt-1 text-[10px] flex items-center justify-center text-amber-700">
+              <Clock size={10} className="mr-1" />
+              <span>{spot.reservation_info}</span>
+            </div>
+          )}
         </div>
       ))}
     </div>

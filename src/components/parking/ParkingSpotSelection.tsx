@@ -14,6 +14,7 @@ interface ParkingSpot {
   status: SpotStatus;
   reserved_until?: string | null;
   reserved_by?: string | null;
+  reservation_info?: string;
 }
 
 interface ParkingSpotSelectionProps {
@@ -31,7 +32,7 @@ const ParkingSpotSelection = ({
 }: ParkingSpotSelectionProps) => {
   const selectedSpot = spots.find(spot => spot.id === selectedSpotId);
   const { bookingHistory, isLoading: isHistoryLoading } = useSpotBookingHistory(selectedSpotId);
-  
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -47,13 +48,14 @@ const ParkingSpotSelection = ({
       </div>
     );
   }
-  
+
   // Calculate available spots correctly
   const availableSpots = spots.filter(spot => spot.status === 'available');
   const availableCount = availableSpots.length;
   const occupiedCount = spots.filter(spot => spot.status === 'occupied').length;
+  const reservedCount = spots.filter(spot => spot.status === 'reserved').length;
   const hasAvailableSpots = availableCount > 0;
-  
+
   return (
     <div className="mt-6">
       <div className="flex justify-between items-center mb-4">
@@ -67,9 +69,14 @@ const ParkingSpotSelection = ({
           <Badge variant="outline" className="bg-muted text-muted-foreground">
             {occupiedCount} Occupied
           </Badge>
+          {reservedCount > 0 && (
+            <Badge variant="outline" className="bg-amber-100 border-amber-300 text-amber-700">
+              {reservedCount} Reserved
+            </Badge>
+          )}
         </div>
       </div>
-      
+
       {spots.length === 0 ? (
         <Alert className="mb-4">
           <AlertDescription>
@@ -88,16 +95,16 @@ const ParkingSpotSelection = ({
             <CircleCheck className="h-5 w-5 text-sky-500 mr-2 mt-0.5 flex-shrink-0" />
             <p>Tap on an available spot to select it for booking. Selected spots will be highlighted.</p>
           </div>
-          
-          <ParkingSpotGrid 
-            spots={spots} 
+
+          <ParkingSpotGrid
+            spots={spots}
             onSpotSelect={onSpotSelect}
             selectedSpotId={selectedSpotId || undefined}
           />
-          
+
           {/* Show spot booking history for selected spot */}
           {selectedSpotId && selectedSpot && (
-            <SpotBookingHistory 
+            <SpotBookingHistory
               spotId={selectedSpotId}
               spotLabel={selectedSpot.label}
               bookingHistory={bookingHistory}
@@ -106,13 +113,13 @@ const ParkingSpotSelection = ({
           )}
         </>
       )}
-      
+
       {selectedSpotId && (
         <div className="mt-3 py-2 text-sm font-medium text-center text-green-700 bg-green-50 rounded-md">
           <p>Selected spot: <span className="font-bold">{spots.find(s => s.id === selectedSpotId)?.label}</span></p>
         </div>
       )}
-      
+
       {!selectedSpotId && hasAvailableSpots && (
         <div className="mt-3 py-2 text-sm text-center text-amber-700 bg-amber-50 rounded-md">
           <p>Please select an available spot to continue</p>

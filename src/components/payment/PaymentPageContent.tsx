@@ -18,6 +18,8 @@ export interface BookingDetails {
   spotLabel: string;
   duration: number;
   price: number;
+  startTime?: string;
+  endTime?: string;
 }
 
 interface PaymentPageContentProps {
@@ -45,15 +47,48 @@ const PaymentPageContent = ({
     });
     refreshBalance();
   };
-  
+
   const handleMakePayment = async () => {
+    // Get current time and calculate end time based on duration
+    const startTime = bookingDetails.startTime ? new Date(bookingDetails.startTime) : new Date();
+    const endTime = bookingDetails.endTime ? new Date(bookingDetails.endTime) :
+                   new Date(startTime.getTime() + (bookingDetails.duration * 60 * 60 * 1000));
+
+    // Check for overlapping bookings
+    const { data: overlappingBookings, error: bookingError } = await supabase
+      .from('bookings')
+      .select('id, start_time, end_time')
+      .eq('parking_slot_id', bookingDetails.spotId)
+      .eq('is_active', true)
+      .or(
+        `and(start_time.lte.${endTime.toISOString()},end_time.gte.${startTime.toISOString()})`
+      );
+
+    if (bookingError) {
+      toast({
+        title: "Error",
+        description: "Failed to verify spot availability.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (overlappingBookings.length > 0) {
+      toast({
+        title: "Spot No Longer Available",
+        description: "This parking spot has been booked for the selected time range.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     // Verify spot is still available right before booking
     const { data, error } = await supabase
       .from('parking_slots')
       .select('is_occupied, slot_label')
       .eq('id', bookingDetails.spotId)
       .single();
-      
+
     if (error || data.is_occupied) {
       toast({
         title: "Spot No Longer Available",
@@ -62,7 +97,7 @@ const PaymentPageContent = ({
       });
       return;
     }
-    
+
     if (balance < bookingDetails.price) {
       toast({
         title: "Insufficient Funds",
@@ -71,7 +106,7 @@ const PaymentPageContent = ({
       });
       return;
     }
-    
+
     // Get current user ID
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -83,7 +118,7 @@ const PaymentPageContent = ({
       navigate('/login');
       return;
     }
-    
+
     try {
       const bookingResult = await bookSpot({
         userId: user.id,
@@ -92,9 +127,11 @@ const PaymentPageContent = ({
         spotId: bookingDetails.spotId,
         spotLabel: bookingDetails.spotLabel,
         duration: bookingDetails.duration,
-        price: bookingDetails.price
+        price: bookingDetails.price,
+        startTime: bookingDetails.startTime,
+        endTime: bookingDetails.endTime
       });
-      
+
       if (!bookingResult.success) {
         // Handle specific booking failure reasons
         if (bookingResult.error?.message?.includes('occupied')) {
@@ -117,7 +154,7 @@ const PaymentPageContent = ({
 
       // Refresh balance to show updated wallet amount
       refreshBalance();
-      
+
       // Navigate to confirmation page with booking details
       navigate('/booking/confirmation', {
         state: {
@@ -141,29 +178,31 @@ const PaymentPageContent = ({
   return (
     <>
       <h1 className="text-2xl font-bold mb-6">Payment</h1>
-      
+
       {!isSpotStillAvailable && <UnavailableSpotAlert />}
-      
-      <BookingDetailsCard 
+
+      <BookingDetailsCard
         parkingLotName={bookingDetails.parkingLotName}
         spotLabel={bookingDetails.spotLabel}
         duration={bookingDetails.duration}
         price={bookingDetails.price}
+        startTime={bookingDetails.startTime}
+        endTime={bookingDetails.endTime}
       />
-      
+
       <div className="mb-6">
         <h2 className="font-semibold mb-2">Pay with Wallet</h2>
         <WalletCard onAddFunds={handleAddFunds} />
-        
+
         {balance < bookingDetails.price && (
-          <WalletBalanceAlert 
+          <WalletBalanceAlert
             currentBalance={balance}
             requiredAmount={bookingDetails.price}
           />
         )}
       </div>
-      
-      <PaymentActionButton 
+
+      <PaymentActionButton
         price={bookingDetails.price}
         isProcessing={isProcessing}
         isCheckingAvailability={isCheckingAvailability}
@@ -171,7 +210,7 @@ const PaymentPageContent = ({
         onClick={handleMakePayment}
         disabled={isProcessing || balance < bookingDetails.price || !isSpotStillAvailable || isCheckingAvailability}
       />
-      
+
       <p className="text-sm text-muted-foreground text-center mt-4">
         By proceeding, you agree to our terms and conditions for parking reservations.
       </p>
