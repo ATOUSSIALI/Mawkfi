@@ -79,6 +79,13 @@ export async function createBooking(params: BookingParams): Promise<BookingResul
     // Generate booking code
     const bookingCode = 'BKG' + Math.floor(100000 + Math.random() * 900000);
 
+    // Determine the appropriate status based on start time
+    // Reuse the existing 'now' variable from above
+    const bookingStatus = startTime <= now ? 'active' : 'upcoming';
+
+    // We'll implement the transaction after the database functions are created
+    // For now, we'll proceed with the existing implementation
+
     // Create a booking record
     const { data: bookingData, error: bookingError } = await supabase
       .from('bookings')
@@ -92,7 +99,7 @@ export async function createBooking(params: BookingParams): Promise<BookingResul
         total_price: price,
         booking_code: bookingCode,
         is_active: true,
-        status: 'active'
+        status: bookingStatus
       })
       .select('id')
       .single();
@@ -158,6 +165,8 @@ export async function createBooking(params: BookingParams): Promise<BookingResul
       startTime: startTime.toISOString(),
       endTime: endTime.toISOString()
     };
+
+
   } catch (error: any) {
     console.error('Error booking spot:', error);
     return { success: false, error };

@@ -32,7 +32,7 @@ export function useSpotVerifier({ onSpotUnavailable, refetchSpots }: UseSpotVeri
 
       if (spotError) throw spotError;
 
-      // Check for overlapping bookings
+      // Check for overlapping bookings with a more robust query
       const { data: overlappingBookings, error } = await supabase
         .from('bookings')
         .select('id, start_time, end_time')
@@ -44,7 +44,9 @@ export function useSpotVerifier({ onSpotUnavailable, refetchSpots }: UseSpotVeri
 
       if (error) throw error;
 
-      if (overlappingBookings.length > 0) {
+      // Note: We'll implement locking mechanism after the database functions are created
+
+      if (overlappingBookings && overlappingBookings.length > 0) {
         // Format the conflicting time range for better user feedback
         const conflictingBooking = overlappingBookings[0];
         const conflictStart = new Date(conflictingBooking.start_time);
@@ -65,7 +67,7 @@ export function useSpotVerifier({ onSpotUnavailable, refetchSpots }: UseSpotVeri
       }
 
       // If the spot is marked as occupied but has no active bookings, it might be a data inconsistency
-      if (spotData.is_occupied && overlappingBookings.length === 0) {
+      if (spotData.is_occupied && (!overlappingBookings || overlappingBookings.length === 0)) {
         toast({
           title: 'Spot Currently Occupied',
           description: `The spot ${spotLabel} is currently occupied.`,

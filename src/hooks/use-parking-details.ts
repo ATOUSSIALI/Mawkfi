@@ -1,9 +1,9 @@
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { QueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
+import { useEffect } from 'react';
 
 export interface ParkingLocation {
   id: string;
@@ -28,11 +28,11 @@ export interface ParkingSpot {
   active_booking_id?: string;
 }
 
-// Create a QueryClient instance
-const queryClient = new QueryClient();
-
 export function useParkingDetails(parkingId: string) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // We'll use refreshData instead of this function
 
   const {
     data: parkingDetails,
@@ -152,6 +152,42 @@ export function useParkingDetails(parkingId: string) {
       queryClient.refetchQueries({ queryKey: ['parking-spots', parkingId] })
     ]);
   };
+
+  // Set up real-time subscriptions
+  useEffect(() => {
+    // Subscribe to changes in parking_slots table
+    const slotsChannel = supabase
+      .channel('parking-slots-changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'parking_slots',
+        filter: `parking_location_id=eq.${parkingId}`
+      }, (payload) => {
+        console.log('Parking slot change detected:', payload);
+        refreshData();
+      })
+      .subscribe();
+
+    // Subscribe to changes in bookings table
+    const bookingsChannel = supabase
+      .channel('parking-bookings-changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'bookings',
+        filter: `parking_location_id=eq.${parkingId}`
+      }, (payload) => {
+        console.log('Booking change detected:', payload);
+        refreshData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(slotsChannel);
+      supabase.removeChannel(bookingsChannel);
+    };
+  }, [parkingId, refreshData]);
 
   return {
     parkingDetails,

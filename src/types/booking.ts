@@ -26,8 +26,8 @@ export interface CancellationResult {
   refunded?: number;
 }
 
-// Updated to match with the one in use-user-bookings.ts by adding 'all'
-export type BookingStatus = 'upcoming' | 'completed' | 'cancelled' | 'all';
+// All possible booking statuses
+export type BookingStatus = 'upcoming' | 'active' | 'reserved' | 'completed' | 'cancelled' | 'all';
 
 export interface Booking {
   id: string;

@@ -58,6 +58,7 @@ export const scheduleBookingExpiration = async (bookingId: string, spotId: strin
 
 // Function to check for and expire overdue bookings
 export const checkAndExpireOverdueBookings = async () => {
+  console.log('Checking for overdue bookings...');
   try {
     const now = new Date().toISOString();
 
@@ -67,6 +68,8 @@ export const checkAndExpireOverdueBookings = async () => {
       .select('id, parking_slot_id, end_time, is_active, status')
       .eq('is_active', true)
       .lt('end_time', now);
+
+    console.log(`Found ${overdueBookings?.length || 0} overdue bookings to process`);
 
     if (error) {
       throw error;

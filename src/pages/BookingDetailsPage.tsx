@@ -33,12 +33,12 @@ const BookingDetailsPage = () => {
   const { cancelBooking, isProcessing } = useParkingBooking();
   const [booking, setBooking] = useState<BookingData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Fetch booking details
   useEffect(() => {
     const fetchBookingDetails = async () => {
       if (!id) return;
-      
+
       try {
         const { data, error } = await supabase
           .from('bookings')
@@ -49,9 +49,9 @@ const BookingDetailsPage = () => {
           `)
           .eq('id', id)
           .single();
-          
+
         if (error) throw error;
-        
+
         if (data) {
           setBooking({
             id: data.id,
@@ -78,50 +78,58 @@ const BookingDetailsPage = () => {
         setIsLoading(false);
       }
     };
-    
+
     fetchBookingDetails();
-    
+
     // Setup subscription for real-time updates
     const channel = supabase
       .channel('booking-details-changes')
-      .on('postgres_changes', { 
-        event: 'UPDATE', 
-        schema: 'public', 
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
         table: 'bookings',
         filter: `id=eq.${id}`
       }, fetchBookingDetails)
       .subscribe();
-      
+
     return () => {
       supabase.removeChannel(channel);
     };
   }, [id, toast]);
-  
+
   const handleCancelBooking = async () => {
     if (!booking) return;
-    
-    const result = await cancelBooking(booking.id, booking.parkingSlotId);
-    
-    if (result.success) {
-      if (result.refunded) {
-        toast({
-          title: "Booking Cancelled",
-          description: `Your booking has been cancelled and ${result.refunded} DZD has been refunded to your wallet.`,
-        });
+
+    try {
+      // Optimistically update the UI
+      setBooking(prev => prev ? { ...prev, status: 'cancelled' } : null);
+
+      const result = await cancelBooking(booking.id, booking.parkingSlotId);
+
+      if (result.success) {
+        // Redirect to bookings page after a short delay
+        setTimeout(() => {
+          navigate('/bookings', { state: { refreshBookings: true } });
+        }, 1500);
       } else {
+        // If cancellation failed, revert the optimistic update
+        setBooking(prev => prev ? { ...prev, status: 'upcoming' } : null);
+
         toast({
-          title: "Booking Cancelled",
-          description: "Your booking has been cancelled successfully.",
+          title: "Cancellation Failed",
+          description: result.error?.message || "Could not cancel booking. Please try again.",
+          variant: "destructive"
         });
       }
-      
-      // Update booking locally for instant UI feedback
-      setBooking(prev => prev ? { ...prev, status: 'cancelled' } : null);
-      
-      // Redirect to bookings page after a short delay
-      setTimeout(() => {
-        navigate('/bookings');
-      }, 1500);
+    } catch (error: any) {
+      // If there was an error, revert the optimistic update
+      setBooking(prev => prev ? { ...prev, status: 'upcoming' } : null);
+
+      toast({
+        title: "Cancellation Error",
+        description: error.message || "An error occurred while cancelling the booking.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -133,7 +141,7 @@ const BookingDetailsPage = () => {
       </PageContainer>
     );
   }
-  
+
   // Render not found state
   if (!booking) {
     return (
@@ -147,7 +155,7 @@ const BookingDetailsPage = () => {
       </PageContainer>
     );
   }
-  
+
   // Format dates for display
   const formatDateTime = (dateTimeStr: string) => {
     const date = new Date(dateTimeStr);
@@ -156,27 +164,38 @@ const BookingDetailsPage = () => {
       time: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
   };
-  
+
   const startDateTime = formatDateTime(booking.startTime);
   const endDateTime = formatDateTime(booking.endTime);
-  
+
+  // Status text and colors
+  const statusText = {
+    upcoming: 'Upcoming',
+    active: 'Active',
+    reserved: 'Reserved',
+    completed: 'Completed',
+    cancelled: 'Cancelled',
+  };
+
   // Status badge styles
   const statusColors = {
-    upcoming: 'bg-primary text-white',
+    upcoming: 'bg-blue-500 text-white',
+    active: 'bg-primary text-white',
+    reserved: 'bg-amber-500 text-white',
     completed: 'bg-muted text-muted-foreground',
     cancelled: 'bg-destructive text-white',
   };
-  
+
   return (
     <PageContainer className="pb-20">
       <h1 className="text-2xl font-bold mb-2">Booking Details</h1>
       <div className="flex justify-between items-center mb-6">
         <p className="text-sm text-muted-foreground">ID: {booking.bookingCode}</p>
         <div className={`px-3 py-1 rounded text-sm ${statusColors[booking.status]}`}>
-          {booking.status === 'upcoming' ? 'Active' : booking.status === 'completed' ? 'Completed' : 'Cancelled'}
+          {statusText[booking.status]}
         </div>
       </div>
-      
+
       {booking.status === 'cancelled' && (
         <Alert className="mb-6 bg-red-50 border-red-200 text-red-700">
           <AlertDescription>
@@ -184,7 +203,7 @@ const BookingDetailsPage = () => {
           </AlertDescription>
         </Alert>
       )}
-      
+
       {booking.status === 'completed' && (
         <Alert className="mb-6 bg-gray-50 border-gray-200">
           <AlertDescription>
@@ -192,21 +211,21 @@ const BookingDetailsPage = () => {
           </AlertDescription>
         </Alert>
       )}
-      
+
       <div className="bg-card rounded-lg border p-4 mb-6">
         <h2 className="font-semibold mb-2">{booking.parkingName}</h2>
         <p className="text-sm mb-2">Spot {booking.spotLabel}</p>
-        
+
         <div className="flex items-start mb-4">
           <MapPin size={18} className="mr-2 text-primary mt-0.5" />
           <p className="text-sm">{booking.address}</p>
         </div>
-        
+
         <div className="flex items-center mb-2">
           <Calendar size={16} className="mr-2 text-primary" />
           <p className="text-sm">{startDateTime.date}</p>
         </div>
-        
+
         <div className="flex items-center mb-4">
           <Clock size={16} className="mr-2 text-primary" />
           <p className="text-sm">
@@ -214,13 +233,13 @@ const BookingDetailsPage = () => {
             <span className="ml-2 text-muted-foreground">({booking.duration} hour{booking.duration > 1 ? 's' : ''})</span>
           </p>
         </div>
-        
+
         <div className="border-t pt-2 flex justify-between">
           <p className="font-medium">Total</p>
           <p className="font-bold text-primary">{booking.price} DZD</p>
         </div>
       </div>
-      
+
       {booking.status === 'upcoming' && (
         <div className="bg-card rounded-lg border p-4 mb-6 text-center">
           <h2 className="font-semibold mb-4">QR Code</h2>
@@ -230,10 +249,10 @@ const BookingDetailsPage = () => {
           </p>
         </div>
       )}
-      
+
       {booking.status === 'upcoming' && (
-        <Button 
-          variant="destructive" 
+        <Button
+          variant="destructive"
           className="w-full"
           onClick={handleCancelBooking}
           disabled={isProcessing}
@@ -241,9 +260,9 @@ const BookingDetailsPage = () => {
           {isProcessing ? 'Processing...' : 'Cancel Booking'}
         </Button>
       )}
-      
-      <Button 
-        variant="outline" 
+
+      <Button
+        variant="outline"
         className="w-full mt-3"
         onClick={() => navigate('/bookings')}
       >
