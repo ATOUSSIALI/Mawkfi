@@ -12,7 +12,7 @@ const RegisterPage = () => {
           <Logo size="md" />
         </div>
         
-        <h1 className="text-2xl font-bold mb-6">Create a ParkDZ Account</h1>
+        <h1 className="text-2xl font-bold mb-6">Create a mawkfi Account</h1>
         
         <RegisterForm />
       </PageContainer>

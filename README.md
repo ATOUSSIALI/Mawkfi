@@ -1,73 +1,85 @@
-# Welcome to your Lovable project
+🅿️ مشروع التخرج: موقفي (Mawkfi)
+🔗 روابط المشروع
+جميع روابط المشروع متوفرة على: https://linktr.ee/mawkfi
 
-## Project info
+📄 ملف PDF للمشروع
 
-**URL**: https://lovable.dev/projects/19b55aa7-6796-4448-a3c4-1329539aef4b
+📱 تطبيق APK للتثبيت
 
-## How can I edit this code?
+💻 الكود المصدري على GitHub
 
-There are several ways of editing your application.
+🎯 العرض التقديمي
 
-**Use Lovable**
+💡 نبذة عن المشروع
+تطبيق "موقفي" (Mawkfi) هو حل مبتكر لمشكلة إيجاد وحجز أماكن وقوف السيارات. يهدف التطبيق إلى تسهيل عملية البحث عن مواقف السيارات وحجزها مسبقاً قبل الوصول إلى الوجهة المطلوبة، مما يوفر الوقت والجهد على المستخدمين ويقضي على مشكلة البحث العشوائي عن مواقف متاحة. 🚗✨
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/19b55aa7-6796-4448-a3c4-1329539aef4b) and start prompting.
+✅ الميزات الرئيسية
+🔄 حجز مسبق لمواقف السيارات قبل الوصول إلى المكان
 
-Changes made via Lovable will be committed automatically to this repo.
+📱 إنشاء رمز باركود فريد عند الحجز يستخدم للدخول إلى الموقف
 
-**Use your preferred IDE**
+🔍 عرض المواقف المتاحة في المنطقة المحددة
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+⚡️ مزامنة البيانات في الوقت الفعلي
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+🔔 إشعارات تذكيرية قبل وقت الحجز
 
-Follow these steps:
+⏱️ إمكانية تمديد وقت الحجز أو إلغائه
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+🔐 نظام مصادقة وإدارة للمستخدمين
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+📋 المتطلبات
+📱 نظام أندرويد إصدار 8.0 أو أحدث
 
-# Step 3: Install the necessary dependencies.
-npm i
+🌐 اتصال بالإنترنت
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+📍 خدمات تحديد الموقع (GPS) مفعلة
 
-**Edit a file directly in GitHub**
+💾 مساحة تخزين حوالي 50 ميجابايت
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+⬇️ طريقة التثبيت والاستخدام
+📲 قم بتنزيل ملف APK من مجلد المشروع أو من الرابط https://linktr.ee/mawkfi
 
-**Use GitHub Codespaces**
+🔒 في جهازك، اسمح بتثبيت التطبيقات من مصادر غير معروفة (الإعدادات > الأمان)
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+💿 قم بتثبيت التطبيق بالضغط على ملف APK
 
-## What technologies are used for this project?
+👤 افتح التطبيق وقم بإنشاء حساب جديد
 
-This project is built with:
+🔎 ابحث عن موقف في المنطقة المطلوبة واحجز مكانك
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+📲 عند الحجز، سيتم إنشاء رمز باركود لك استخدمه عند الوصول للموقف
 
-## How can I deploy this project?
+🛠️ التقنيات المستخدمة
+🎨 واجهة المستخدم: React، TypeScript، Tailwind CSS، shadcn-ui
 
-Simply open [Lovable](https://lovable.dev/projects/19b55aa7-6796-4448-a3c4-1329539aef4b) and click on Share -> Publish.
+🔧 الخلفية: Supabase (قاعدة بيانات PostgreSQL، مصادقة، واجهات برمجة فورية، تخزين)
 
-## Can I connect a custom domain to my Lovable project?
+⚡️ تطوير التطبيق: Vite
 
-Yes, you can!
+🗄️ قاعدة البيانات: Supabase PostgreSQL للبيانات في الوقت الفعلي
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+🔐 المصادقة: نظام مصادقة Supabase
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+📊 توليد الباركود: QR Code API
+
+⚙️ الإعدادات وخيارات التكوين
+📍 يتطلب التطبيق تفعيل خدمات تحديد الموقع للعمل بشكل صحيح
+
+🔑 تأكد من إدخال متغيرات البيئة الصحيحة لـ Supabase (URL و API Key)
+
+⭐️ يمكن حفظ المواقف المفضلة في ملف التعريف الشخصي للوصول إليها بسرعة
+
+🔄 يمكن تعديل نطاق البحث في إعدادات التطبيق
+
+👨‍💻 المساهمون
+👨‍💻 بلوم محمد ياسين (Belloum Mohammed Yacine)
+👨‍💻 عتوسي محمد علي (Atoussi Mohammed Ali)
+
+👩‍🏫 الإشراف الأكاديمي
+👩‍🏫 معامرة أم الهناء (Mammra Oum Elhana) - كلية العلوم الدقيقة
+
+🙏 شكر وتقدير
+نتقدم بالشكر الجزيل للأستاذة معمرة أم الهناء على إشرافها المتميز ودعمها المستمر طوال فترة تطوير هذا المشروع. كما نشكر كلية العلوم الدقيقة بجامعة حمة لخضر على توفير البيئة المناسبة للبحث والتطوير. 🌟
+
+✨ تم تطوير هذا المشروع كجزء من متطلبات التخرج لمرحلة الليسانس (السنة الثالثة) في كلية العلوم الدقيقة، جامعة حمة لخضر، للعام الدراسي 2024-2025. 🎓

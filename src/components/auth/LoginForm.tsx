@@ -29,7 +29,7 @@ const LoginForm = () => {
       
       toast({
         title: "Login Successful",
-        description: "Welcome back to ParkDZ!",
+        description: "Welcome back to mawkfi!",
       });
       
       navigate('/dashboard');

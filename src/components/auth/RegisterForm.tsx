@@ -46,7 +46,7 @@ const RegisterForm = () => {
       
       toast({
         title: "Registration Successful",
-        description: "Welcome to ParkDZ!",
+        description: "Welcome to mawkfi!",
       });
       
       navigate('/dashboard');
